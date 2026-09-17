@@ -167,14 +167,20 @@ function drawLava(){
     }
   }
 }
-/* devil fireballs: magma core + hot center */
+/* devil fireballs: big magma core, hot center, flame tail */
 function drawFireballs(){
   if(world!=='hell')return;
   for(const f of fireballs){
     const x=Math.round(f.x),y=Math.round(f.y);
+    /* trailing flames opposite the travel direction */
+    const tx=Math.round(-f.vx*0.05),ty=Math.round(-f.vy*0.05);
+    g.fillStyle='#c23a10';
+    g.fillRect(x+tx,y+ty,2,2);
+    fillCircle(g,x,y,4,'#5c1408');
     fillCircle(g,x,y,3,'#c23a10');
     fillCircle(g,x,y,2,'#ff8c30');
-    g.fillStyle='#ffe9a8';g.fillRect(x-1,y-1,1,1);
+    g.fillStyle='#ffe9a8';g.fillRect(x-1,y-1,2,1);
+    g.fillStyle='#ffd24a';g.fillRect(x,y-2,1,1);
   }
 }
 function render(){

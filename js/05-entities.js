@@ -129,7 +129,8 @@ function tryPortalRoll(){
 function collect(c){
   combo++;comboT=2.2;
   const mult=streakMult(combo);
-  const v=Math.round(coinValBase()*mult*coinMult())*(c.hot?3:1);
+  let v=Math.round(coinValBase()*mult*coinMult())*(c.hot?3:1);
+  if(!isFinite(v)||v<1)v=1;               /* NaN guard */
   coins+=v;
   if(world==='hell')HL.earned+=v; else stats.earned+=v;
   burst(c.x+4,c.y+4);
@@ -142,7 +143,8 @@ function collect(c){
   tryPortalRoll();
 }
 function workerCollect(c,hot){
-  const v=Math.round(coinValBase()*coinMult())*(hot?3:1);
+  let v=Math.round(coinValBase()*coinMult())*(hot?3:1);
+  if(!isFinite(v)||v<1)v=1;               /* NaN guard */
   coins+=v;
   if(world==='hell')HL.earned+=v; else stats.earned+=v;
   miniBurst(c.x+4,c.y+4);
@@ -153,6 +155,7 @@ function workerCollect(c,hot){
   tryPortalRoll();
 }
 function updateCoins(dt){
+  if(!isFinite(coins))coins=0;            /* self-heal a poisoned counter */
   const cTS=shopOpen?0.35:1, gravM=fallMult();
   spawnT-=dt*cTS;
   if(spawnT<=0){

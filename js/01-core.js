@@ -139,8 +139,11 @@ const spawnInterval=()=>world==='hell'?1.6:1.6*Math.pow(2,-lv.spawn/30);
 const pickupReach =()=>world==='hell'?19:19+0.45*lv.radius;
 const fallMult    =()=>world==='hell'?1:1+0.04*lv.gravity;
 const luckChance  =()=>world==='hell'?0:0.005*lv.luck;
-/* coin payout base per world */
-const coinValBase =()=>world==='hell'?1+lv.mvalue:1+lv.value;
+/* coin payout base per world — defensive: unknown/missing level
+   keys (mid-migration sessions) can never produce NaN */
+const coinValBase =()=>world==='hell'
+  ?1+(typeof lv.mvalue==='number'&&isFinite(lv.mvalue)?lv.mvalue:0)
+  :1+(typeof lv.value==='number'&&isFinite(lv.value)?lv.value:0);
 /* overheat chance (hell only) */
 const overheatChance=()=>world==='hell'?0.005*lv.overheat:0;
 /* rest lifetime: hell shrinks dissipation; 100 = effectively never */

@@ -5,13 +5,14 @@
    logotype renderer, the settings-panel icon buttons, the
    tag/mini/micro fonts, and the MAGMA COIN.
 
-   v6.8: DEVIL worker sprite (horns, dark red) + 5 hell shop
-   icons (overheated coin, magma value, dissipation, devil,
-   hellfire fireball).
+   v6.9: FIX — HELL_ICON_URL is now ASSIGNED to the UPG_HELL
+   entries (the missing line that caused blank shop icons).
+   Devil sprite REDESIGNED: red horns, glowing red eyes, red
+   skin, obsidian-black body with ember glints, dark legs.
    ============================================================ */
 'use strict';
 
-console.info('%cCFPX assets: v6.8 (devil + hell icons)','color:#4fa8dd;font-weight:bold');
+console.info('%cCFPX assets: v6.9 (icon fix + obsidian devil)','color:#4fa8dd;font-weight:bold');
 
 /* --- hero 12x17 --- */
 const HEAD=[
@@ -96,27 +97,49 @@ const FR_H={
   air:makeSprite([...HEAD_H,...TORSO_W,...LEGS_AIR]),
 };
 
-/* --- DEVIL 12x17 (gold horns, dark red) — hell's worker --- */
+/* --- DEVIL 12x17 (obsidian makeover) ---
+   Red horns, glowing RED eyes on red skin, obsidian-black body
+   with ember glints, dark legs with soot boots. */
 const HEAD_D=[
-".O........O.",
-".OY......YO.",
-"..OYOOOOYO..",
+"..R......R..",
+".ORR....RRO.",
 ".ORRRRRRRRO.",
-".OSSSSSSSSO.",
-".OSWESWESSO.",
-".OSSSSSSssO.",
-".OSSSSEEssO."];
+"ORrrrrrrrrRO",
+"ORrRRrrRRrRO",
+"ORrrrrrrrrRO",
+".ORrRrrRrRO.",
+".ORRrrrrRRO."];
 const TORSO_D=[
-".OrrrrrrrrO.",
-".OPPrrrrPPO.",
-".OPPrYYrPPO.",
-".OSrrrrrrSO.",
-".OPPPYYPPPO."];
+".ODDDDDDDDO.",
+".ODDYDDYDDO.",
+".ODDDYYDDDO.",
+".OrDDDDDDrO.",
+".ODDDDDDDDO."];
+const LEGS_D_IDLE=[
+".ODDDDDDDDO.",
+".ODDDOODDDO.",
+".ODDDOODDDO.",
+".OBBBOOBBBO."];
+const LEGS_D_W1=[
+".ODDDDDDDDO.",
+".ODDDDDDDDO.",
+"ODDD....DDDO",
+"OBBB....BBBO"];
+const LEGS_D_W2=[
+".ODDDDDDDDO.",
+".ODDDOODDDO.",
+".ODDDDDDDDO.",
+"..OBBBBBO.."];
+const LEGS_D_AIR=[
+".ODDDDDDDDO.",
+".ODDDOODDDO.",
+".ODDDOODDDO.",
+".OBBO..OBBO."];
 const FR_D={
-  idle:makeSprite([...HEAD_D,...TORSO_D,...LEGS_IDLE]),
-  w1:makeSprite([...HEAD_D,...TORSO_D,...LEGS_W1]),
-  w2:makeSprite([...HEAD_D,...TORSO_D,...LEGS_W2]),
-  air:makeSprite([...HEAD_D,...TORSO_D,...LEGS_AIR]),
+  idle:makeSprite([...HEAD_D,...TORSO_D,...LEGS_D_IDLE]),
+  w1:makeSprite([...HEAD_D,...TORSO_D,...LEGS_D_W1]),
+  w2:makeSprite([...HEAD_D,...TORSO_D,...LEGS_D_W2]),
+  air:makeSprite([...HEAD_D,...TORSO_D,...LEGS_D_AIR]),
 };
 
 const COIN_FRAMES={
@@ -422,7 +445,8 @@ const magmaFrame=cv=>MAGMA_FRAMES[2*clamp(Math.round(4.6*cv),1,4)];
 
 /* ================= HELL SHOP ICONS =================
    0 overheated coin, 1 magma value (+), 2 dissipation, 3 devil,
-   4 hellfire fireball. Assigned to UPG_HELL by 01-core. */
+   4 hellfire fireball. ASSIGNED to UPG_HELL below — this was the
+   missing line that left the hell shop icons blank. */
 const HELL_ICON_DEFS=[
 ["...RY...","..RYR...",".OWWYO..","OWWYYYYO","OWYYYYyO","OYYYYyyO",".OyyyyO.","..OOOO.."],
 ["...WW...","..WOW...","...W....",".OWWYO..","OWYYYYYO","OYYYyyYO",".OyyyyO.","..OOOO.."],
@@ -430,6 +454,8 @@ const HELL_ICON_DEFS=[
 ["O......O","OO....OO",".OOOOOO.",".ORRRRO.","ORWRRWRO","ORRRRRRO",".ORRRRO.","..OOOO.."],
 ["...RR...","..RRYR..",".RRYYRR.","RRYWYRR.","RRYYYYRR",".RYYYYR.","..RYYR..","...RR..."]];
 const HELL_ICON_URL=HELL_ICON_DEFS.map(m=>makeSprite(m).toDataURL());
+/* THE FIX: bind the icons to the hell upgrade definitions */
+UPG_HELL.forEach(u=>u.hIconURL=HELL_ICON_URL[u.hIcon]);
 
 /* ================= RETRO ARCADE LOGOTYPE ================= */
 function retroText(ctx,str,cx,y,sc,align=1,bands){
