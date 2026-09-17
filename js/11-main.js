@@ -4,12 +4,12 @@
    visual-viewport tracking, lifecycle + background heartbeat,
    the main loop, and boot. Must load last.
 
+   v3.1: FIX — boot opens the gate when resuming in hell too
+   (otherwise the return portal is mode 'none' and the player is
+   stranded in hell after a reload).
    v3: HELL ECONOMY — travelTo flushes the departing world's
    score, swaps the per-world state containers, then rebuilds
-   the dimension; boot skips the gate animation when already
-   earned and resumes the saved dimension; E opens the shop in
-   both worlds.
-   v2: DIMENSIONS — gate travel, overworld-only land rebuilds.
+   the dimension; E opens the shop in both worlds.
    ============================================================ */
 'use strict';
 
@@ -18,7 +18,7 @@ const LOAD_STEPS=[
  ['LOADING PLAYER DATA',()=>{ silentUnlock(); }],
  ['LOADING GAME ASSETS',()=>{ buildAchList(); }],
  ['SPAWNING THE CREW',  ()=>{ if(buffs.helper&&!helper)spawnHelper(); }],
- ['FINALIZING UI',      ()=>{ syncWorldUI();refreshHUD();refreshShop();refreshBuffs();
+ ['FINALIZING UI',      ()=>{ refreshHUD();refreshShop();refreshBuffs();
                              updateCardBtn();refreshStats();refreshAch();
                              syncSliders(); }],
 ];
@@ -350,10 +350,12 @@ function frame(t){
   update(dt);render();
 }
 
-/* ================= BOOT ================= */
+/* ================= BOOT =================
+   load() restores the saved dimension; the gate is opened
+   immediately if it has been earned OR if we're resuming in hell
+   (otherwise the return portal would be stranded in 'none'). */
 load();
-/* gate already earned (or resuming in hell): skip the formation
-   animation — the gate is simply open */
-if(stats.earned>=HELL_UNLOCK&&hellGate.mode==='none')hellGate.mode='open';
+if(hellGate.mode==='none'&&(stats.earned>=HELL_UNLOCK||world==='hell'))
+  hellGate.mode='open';
 layout();
 requestAnimationFrame(frame);

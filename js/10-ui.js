@@ -4,11 +4,15 @@
    achievements list, the shop sidebar, save import/export,
    and touch control bindings.
 
+   v4.1: FIX — syncWorldUI() is now INVOKED at the very END of
+   the file. Calling it at the top hit updateCardBtn()'s
+   cardState (a let declared below) in its temporal dead zone,
+   which aborted the whole script's evaluation (rowRefs TDZ ->
+   refreshShop throwing every frame, dead wiring).
    v4: HELL ECONOMY — syncWorldUI() swaps the coin icons / HUD
    theme per dimension; shop prices show the active currency's
    coin; applySaveState restores the hell record and resumes the
    saved dimension; touch E opens the shop in both worlds.
-   v3: touch E triggers the hell gate. v2: POPUP TEXT toggle.
    ============================================================ */
 'use strict';
 
@@ -43,7 +47,10 @@ const achListEl=document.getElementById('achList');
 document.getElementById('achBtnImg').src=achBtnURL;
 document.getElementById('lbBtnImg').src=lbBtnURL;
 
-/* ================= WORLD-UI SYNC (MAGMA COIN) ================= */
+/* ================= WORLD-UI SYNC (MAGMA COIN) =================
+   NOTE: defined here but INVOKED at the bottom of the file —
+   it touches updateCardBtn/cardState and refreshShop's data,
+   which must be initialized first. */
 const curCoinURL=()=>world==='hell'?magmaURL:coinURL;
 function syncWorldUI(){
   const hell=world==='hell';
@@ -52,7 +59,6 @@ function syncWorldUI(){
   document.getElementById('balIcon').src=curCoinURL();
   refreshHUD();updateCardBtn();
 }
-syncWorldUI();
 
 /* ================= HUD ================= */
 function refreshHUD(){
@@ -343,7 +349,8 @@ document.getElementById('shopClose').addEventListener('click',()=>{setShop(false
    shared by import codes + IndexedDB late-load recovery.
    The snapshot's top-level fields are ALWAYS the overworld;
    hell is restored from the hell record, then the saved
-   dimension is resumed. */
+   dimension is resumed. Only ever called AFTER this script has
+   fully evaluated (import click / async late load). */
 function applySaveState(s){
   world='over';
   coins=(s&&typeof s.coins==='number')?s.coins:0;
@@ -453,7 +460,8 @@ resetBtn.addEventListener('click',()=>{
     for(const k in HL.lv)HL.lv[k]=0;
     for(const k in HL.buffs)HL.buffs[k]=0;
     for(const k in achUnlocked)delete achUnlocked[k];
-    if(world==='hell'){world='over';traveling||0;applyDimension();}
+    /* return to the overworld; the gate re-forms at 1M earned */
+    if(world==='hell'){world='over';applyDimension();}
     hellGate.mode='none';
     syncWorldUI();updateCardBtn();refreshStats();refreshAch();
     refreshHUD();refreshShop();save();
@@ -498,3 +506,8 @@ cardBtn.addEventListener('click',()=>{
   if(!started)return;
   openCards();
   cardBtn.blur();});
+
+/* ================= INITIAL WORLD-UI SYNC =================
+   LAST statement of the file — everything above is initialized,
+   so this can safely touch the HUD, card button and shop. */
+syncWorldUI();
