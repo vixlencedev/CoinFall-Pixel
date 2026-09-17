@@ -1,0 +1,98 @@
+/* ---------- HUD ---------- */
+#hud{position:absolute;top:max(calc(var(--s)*4px),env(safe-area-inset-top));
+  left:calc(var(--s)*5px);right:calc(var(--s)*5px);
+  display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:4}
+#coinBox{display:flex;align-items:center;gap:calc(var(--s)*3px);transition:opacity .5s ease;
+  margin-top:clamp(14px,calc(var(--s)*9px),40px)}
+#stage.prestart #coinBox{opacity:0}
+#coinIcon{width:calc(var(--s)*11px);image-rendering:pixelated;
+  filter:drop-shadow(calc(var(--s)*1px) calc(var(--s)*1px) 0 rgba(12,10,18,.5))}
+#coinCount{font-size:max(14px,calc(var(--s)*8px));color:#f7c548;line-height:1;transform-origin:left center;
+  text-shadow:calc(var(--s)*1px) calc(var(--s)*1px) 0 rgba(12,10,18,.55)}
+#coinCount.flash{animation:cpop .32s ease-out}
+@keyframes cpop{0%{transform:scale(1.42);color:#fff3c4}100%{transform:scale(1)}}
+#coinRate{font-size:max(7px,calc(var(--s)*4px));color:#f7f0dc;margin-top:calc(var(--s)*2px);
+  text-shadow:1px 1px 0 rgba(12,10,18,.55)}
+#streakBadge{font-size:max(7px,calc(var(--s)*4px));margin-top:calc(var(--s)*2px);
+  color:#f7c548;text-shadow:1px 1px 0 rgba(12,10,18,.55);
+  opacity:0;transform:translateY(calc(var(--s)*-2px));
+  transition:opacity .18s ease,transform .18s ease}
+#streakBadge.show{opacity:1;transform:none}
+#streakBadge.x5{color:#ff9040}
+#buffRow{display:flex;gap:max(4px,calc(var(--s)*2px));margin-top:calc(var(--s)*2px)}
+#buffRow img{width:max(20px,calc(var(--s)*7px));height:max(20px,calc(var(--s)*7px));
+  image-rendering:pixelated;filter:drop-shadow(1px 1px 0 rgba(12,10,18,.55))}
+/* ---------- right column ---------- */
+#rightCol{display:flex;flex-direction:column;align-items:flex-end;
+  gap:max(8px,calc(var(--s)*3px));pointer-events:none}
+/* settings button: matches the gray/white settings menu.
+   Gear teeth are dark for contrast on the light face — CSS fill
+   overrides the SVG presentation attributes, index.html untouched. */
+#setBtn{
+  pointer-events:auto;cursor:pointer;
+  background:linear-gradient(180deg,#f4f6f8,#dfe3e8);
+  border:3px solid #3a3f47;
+  box-shadow:inset -3px -3px 0 #c3cad2,inset 3px 3px 0 #ffffff,0 3px 0 rgba(40,44,50,.35);
+  padding:calc(var(--s)*2px);display:flex;align-items:center;justify-content:center;
+  transition:opacity .35s ease;
+}
+#setBtn:hover{filter:brightness(1.05)}
+#setBtn:active{transform:translateY(2px);
+  box-shadow:inset -3px -3px 0 #c3cad2,inset 3px 3px 0 #ffffff,0 1px 0 rgba(40,44,50,.35)}
+#setBtn svg{width:calc(var(--s)*8px);height:auto;display:block}
+#setBtn svg g:first-of-type{fill:#2f353c}   /* gear face — dark    */
+#setBtn svg g:last-of-type{fill:#7a828c}    /* gear shadow — mid   */
+#stage.prestart #setBtn{opacity:0;pointer-events:none}
+#stage.prestart #cardBtn{opacity:0;pointer-events:none}
+#stage.shopopen #setBtn{opacity:.3;pointer-events:none}
+#stage.touch #setBtn{
+  padding:0;
+  width:clamp(35px,calc(var(--s)*13.4px),59px);
+  height:clamp(35px,calc(var(--s)*13.4px),59px);
+}
+#stage.touch #setBtn svg{width:62%;height:auto;display:block}
+#cardBtn{
+  pointer-events:auto;position:relative;cursor:pointer;
+  background:none;border:0;outline:0;padding:0;line-height:0;
+  transition:opacity .35s ease;
+}
+#cardBtn img{width:max(34px,calc(var(--s)*13px));height:auto;image-rendering:pixelated;
+  filter:drop-shadow(calc(var(--s)*1px) calc(var(--s)*1px) 0 rgba(12,10,18,.55));display:block}
+#cardBtn .cdEx{
+  position:absolute;top:-10px;left:-9px;display:none;
+  font-family:inherit;font-size:max(11px,calc(var(--us)*5px));line-height:1;
+  color:#e04a3a;text-shadow:calc(var(--us)*0.5px) calc(var(--us)*0.5px) 0 rgba(12,8,4,.8);
+  animation:cdBob .55s ease-in-out infinite alternate;
+}
+#cardBtn .cdEx.show{display:block}
+@keyframes cdBob{from{transform:translateY(0)}to{transform:translateY(-4px)}}
+#cardBtn.cdOff img{filter:grayscale(1) brightness(.55)}
+#cardBtn.cdOff .cdEx{display:none!important}
+#cardBtn .cdLeft{
+  display:none;position:absolute;top:100%;right:0;margin-top:4px;
+  font-size:max(7px,calc(var(--us)*3px));color:#d9cdb2;
+  text-shadow:1px 1px 0 rgba(12,10,18,.6);white-space:nowrap;
+}
+#cardBtn.cdOff .cdLeft{display:block}
+/* ---------- achievement unlock popup — TEAL, matching the
+   achievements menu theme ---------- */
+#achPop{
+  position:absolute;top:max(calc(var(--s)*6px),env(safe-area-inset-top));left:50%;
+  transform:translate(-50%,-160%);z-index:8;
+  display:flex;align-items:center;gap:max(8px,calc(var(--us)*2px));
+  background:linear-gradient(180deg,#eafaf6 0%,#d7f2ec 60%,#c3e8e0 100%);
+  border:3px solid #0f4a45;
+  box-shadow:inset 0 0 0 2px #2fa8a0,0 3px 0 rgba(15,74,69,.3);
+  padding:max(8px,calc(var(--us)*2px)) max(12px,calc(var(--us)*3px));
+  pointer-events:none;max-width:92%;
+  transition:transform .4s cubic-bezier(.2,1.3,.35,1);
+}
+#achPop.show{transform:translate(-50%,0)}
+#achPop img{width:max(34px,calc(var(--us)*12px));height:max(34px,calc(var(--us)*12px));
+  image-rendering:pixelated;background:#d2efe8;border:2px solid #2fa8a0;
+  box-shadow:inset 0 0 0 2px #c3e8e0;
+  padding:max(2px,calc(var(--us)*1px));flex:none}
+#achPop .apt{font-size:max(6px,calc(var(--us)*2.5px));color:#1e9e52;
+  text-shadow:1px 1px 0 rgba(255,255,255,.6);margin-bottom:4px}
+#achPop .apn{font-size:max(8px,calc(var(--us)*3.5px));color:#12403b;
+  text-shadow:1px 1px 0 rgba(255,255,255,.6);line-height:1.4}

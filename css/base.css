@@ -1,0 +1,30 @@
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--s:3;--us:3}
+html,body{height:100%}
+body{background:#141019;font-family:'Press Start 2P',monospace;overflow:hidden;user-select:none;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;touch-action:manipulation}
+/* the stage is letterboxed and centered: it fits ANY orientation —
+   landscape worlds are 216 logical px tall, portrait worlds refit by
+   width and grow taller. No rotation hacks, ever. */
+#stage{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  --s:3;--us:3;overflow:hidden;background:#000;touch-action:none}
+#game{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+#scan{position:absolute;inset:0;pointer-events:none;z-index:9;
+  transform:translateZ(0);will-change:transform;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 1px,transparent 1px 3px)}
+
+/* ================= DIMENSION TRAVEL FLASHBANG =================
+   Fixed, above EVERYTHING (canvas, HUD, menus at z 50-52). The
+   white-hot flash peaks ~0.2s in and fades by ~1s; 11-main swaps
+   the world underneath at peak coverage so the teleportation is
+   completely hidden. */
+#flashCover{position:fixed;inset:0;z-index:999;pointer-events:none;
+  background:#fff6e0;opacity:0}
+#flashCover.on{animation:flashbang .98s ease-out forwards}
+@keyframes flashbang{
+  0%{opacity:0}
+  16%{opacity:1}
+  32%{opacity:1}
+  100%{opacity:0}}

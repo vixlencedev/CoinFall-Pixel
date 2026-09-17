@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#4fa8dd"/>
+<title>CoinFall Pixel</title>
+<link rel="icon" type="image/png" href="favicon-96x96.png" sizes="96x96" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="shortcut icon" href="favicon.ico" />
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+<link rel="manifest" href="site.webmanifest" />
+<link rel="icon" type="image/png" href="favicon.png" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/hud.css">
+<link rel="stylesheet" href="css/menus.css">
+<link rel="stylesheet" href="css/shop.css">
+</head>
+<body>
+  <div id="stage" class="prestart">
+    <canvas id="game"></canvas>
+    <div id="scan"></div>
+
+    <div id="hud">
+      <div id="coinBox">
+        <img id="coinIcon" alt="">
+        <div>
+          <div id="coinCount">0</div>
+          <div id="coinRate">+1 PER COIN</div>
+          <div id="streakBadge">STREAK X2</div>
+          <div id="buffRow"></div>
+        </div>
+      </div>
+      <div id="rightCol">
+        <button id="setBtn" type="button" aria-label="Open settings">
+          <svg viewBox="0 0 16 16" shape-rendering="crispEdges">
+            <g fill="#fdf6e3">
+              <rect x="6" y="0" width="4" height="4"/>
+              <rect x="0" y="6" width="4" height="4"/>
+              <rect x="2" y="2" width="3" height="3"/>
+              <rect x="11" y="2" width="3" height="3"/>
+              <rect x="5" y="3" width="6" height="1"/>
+              <rect x="4" y="4" width="8" height="3"/>
+              <rect x="3" y="5" width="2" height="6"/>
+              <rect x="4" y="7" width="3" height="2"/>
+            </g>
+            <g fill="#d9cdb2">
+              <rect x="6" y="12" width="4" height="4"/>
+              <rect x="12" y="6" width="4" height="4"/>
+              <rect x="2" y="11" width="3" height="3"/>
+              <rect x="11" y="11" width="3" height="3"/>
+              <rect x="5" y="12" width="6" height="1"/>
+              <rect x="4" y="9" width="8" height="3"/>
+              <rect x="12" y="9" width="2" height="6"/>
+              <rect x="9" y="7" width="3" height="2"/>
+            </g>
+          </svg>
+        </button>
+        <button id="cardBtn" type="button" aria-label="Pick a power-up card" style="display:none">
+          <img id="cardBtnImg" alt="Power-up card">
+          <span class="cdEx" id="cardEx">!</span>
+          <span class="cdLeft" id="cardLeft"></span>
+        </button>
+      </div>
+    </div>
+
+    <div id="achPop">
+      <img id="achPopImg" alt="">
+      <div>
+        <div class="apt">ACHIEVEMENT UNLOCKED!</div>
+        <div class="apn" id="achPopName"></div>
+      </div>
+    </div>
+
+    <div id="touchUI">
+      <div class="tgroup" id="tMove">
+        <button class="tbtn" id="tLeft" type="button" aria-label="Move left">
+          <svg viewBox="0 0 10 10" shape-rendering="crispEdges">
+            <g fill="rgba(12,10,18,.55)" transform="translate(.8,.8)">
+              <rect x="4" y="0" width="2" height="2"/><rect x="2" y="2" width="2" height="2"/>
+              <rect x="0" y="4" width="2" height="2"/><rect x="2" y="6" width="2" height="2"/>
+              <rect x="4" y="8" width="2" height="2"/>
+            </g>
+            <g fill="#fdf6e3">
+              <rect x="4" y="0" width="2" height="2"/><rect x="2" y="2" width="2" height="2"/>
+              <rect x="0" y="4" width="2" height="2"/><rect x="2" y="6" width="2" height="2"/>
+              <rect x="4" y="8" width="2" height="2"/>
+            </g>
+          </svg>
+        </button>
+        <button class="tbtn" id="tRight" type="button" aria-label="Move right">
+          <svg viewBox="0 0 10 10" shape-rendering="crispEdges">
+            <g fill="rgba(12,10,18,.55)" transform="translate(.8,.8)">
+              <rect x="4" y="0" width="2" height="2"/><rect x="6" y="2" width="2" height="2"/>
+              <rect x="8" y="4" width="2" height="2"/><rect x="6" y="6" width="2" height="2"/>
+              <rect x="4" y="8" width="2" height="2"/>
+            </g>
+            <g fill="#fdf6e3">
+              <rect x="4" y="0" width="2" height="2"/><rect x="6" y="2" width="2" height="2"/>
+              <rect x="8" y="4" width="2" height="2"/><rect x="6" y="6" width="2" height="2"/>
+              <rect x="4" y="8" width="2" height="2"/>
+            </g>
+          </svg>
+        </button>
+      </div>
+      <div class="tgroup" id="tAct">
+        <button class="tbtn" id="tE" type="button" aria-label="Open shop">E</button>
+        <button class="tbtn" id="tJump" type="button" aria-label="Jump">
+          <svg viewBox="0 0 10 10" shape-rendering="crispEdges">
+            <g fill="rgba(12,10,18,.55)" transform="translate(.8,.8)">
+              <rect x="0" y="4" width="2" height="2"/><rect x="2" y="2" width="2" height="2"/>
+              <rect x="4" y="0" width="2" height="2"/><rect x="6" y="2" width="2" height="2"/>
+              <rect x="8" y="4" width="2" height="2"/>
+            </g>
+            <g fill="#fdf6e3">
+              <rect x="0" y="4" width="2" height="2"/><rect x="2" y="2" width="2" height="2"/>
+              <rect x="4" y="0" width="2" height="2"/><rect x="6" y="2" width="2" height="2"/>
+              <rect x="8" y="4" width="2" height="2"/>
+            </g>
+          </svg>
+        </button>
+        <button class="tbtn" id="tDown" type="button" aria-label="Drop down">
+          <svg viewBox="0 0 10 10" shape-rendering="crispEdges">
+            <g fill="rgba(12,10,18,.55)" transform="translate(.8,.8)">
+              <rect x="0" y="4" width="2" height="2"/><rect x="2" y="6" width="2" height="2"/>
+              <rect x="4" y="8" width="2" height="2"/><rect x="6" y="6" width="2" height="2"/>
+              <rect x="8" y="4" width="2" height="2"/>
+            </g>
+            <g fill="#fdf6e3">
+              <rect x="0" y="4" width="2" height="2"/><rect x="2" y="6" width="2" height="2"/>
+              <rect x="4" y="8" width="2" height="2"/><rect x="6" y="6" width="2" height="2"/>
+              <rect x="8" y="4" width="2" height="2"/>
+            </g>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="shopPanel">
+      <div id="shopAwn"></div>
+      <div id="shopHead">
+        <span id="shopTitle">UPGRADE SHOP</span>
+        <button id="shopClose" type="button" aria-label="Close shop">
+          <svg viewBox="0 0 10 10" width="12" height="12" shape-rendering="crispEdges" stroke="#f7f0dc" stroke-width="2"><path d="M2 2l6 6M8 2l-6 6"/></svg>
+        </button>
+        <div id="shopSub">
+          <div id="qtySel">
+            <button class="qty on" data-q="1"   type="button">X1</button>
+            <button class="qty"    data-q="10"  type="button">X10</button>
+            <button class="qty"    data-q="100" type="button">X100</button>
+            <button class="qty"    data-q="all" type="button">ALL</button>
+          </div>
+          <span id="shopBal"><img id="balIcon" alt=""><span id="balNum">0</span></span>
+        </div>
+      </div>
+      <div id="shopRows"></div>
+    </div>
+  </div>
+
+  <div id="setOverlay">
+    <div id="setPanel">
+      <div id="setAwn"></div>
+      <div id="setHead">
+        <span id="setTitle">SETTINGS</span>
+        <button id="setClose" type="button" aria-label="Close settings">
+          <svg viewBox="0 0 10 10" width="12" height="12" shape-rendering="crispEdges" stroke="#5a3a1a" stroke-width="2"><path d="M2 2l6 6M8 2l-6 6"/></svg>
+        </button>
+      </div>
+      <div class="srow">
+        <div class="stop"><label>SFX VOLUME</label><span class="val" id="sfxVal">100%</span></div>
+        <input type="range" id="sfxSlider" min="0" max="100" step="5">
+      </div>
+      <div class="srow">
+        <div class="stop"><label>MUSIC VOLUME</label><span class="val" id="musVal">55%</span></div>
+        <input type="range" id="musSlider" min="0" max="100" step="5">
+      </div>
+      <div class="sdiv"></div>
+      <div class="trow"><label>PARTICLES</label><button class="tgl on" id="tglParticles" type="button">ON</button></div>
+      <div class="trow"><label>CLOUDS</label><button class="tgl on" id="tglClouds" type="button">ON</button></div>
+      <div class="trow"><label>ANIMATIONS</label><button class="tgl on" id="tglAnims" type="button">ON</button></div>
+      <div class="trow"><label>SCREEN SHAKE</label><button class="tgl on" id="tglShake" type="button">ON</button></div>
+      <div class="trow"><label>STARS</label><button class="tgl on" id="tglStars" type="button">ON</button></div>
+      <div class="trow"><label>POPUP TEXT</label><button class="tgl on" id="tglPopText" type="button">ON</button></div>
+      <div class="sdiv"></div>
+      <div id="panelBtns">
+        <button id="achBtn" type="button" aria-label="Achievements" title="ACHIEVEMENTS">
+          <img id="achBtnImg" alt="">
+        </button>
+        <button id="lbBtn" type="button" aria-label="Leaderboard" title="LEADERBOARD">
+          <img id="lbBtnImg" alt="">
+        </button>
+      </div>
+      <div class="sdiv"></div>
+      <div class="statr"><label>PLAYTIME</label><span class="val" id="stPlay">0M</span></div>
+      <div class="statr"><label>COINS EARNED</label><span class="val" id="stEarn">0</span></div>
+      <div class="statr"><label>GAME PROGRESS</label><span class="val" id="stProg">0.00%</span></div>
+      <div class="statr"><label>GLOBAL MULTIPLIER</label><span class="val" id="stMult">X1</span></div>
+      <div class="sdiv"></div>
+      <div id="setBtns">
+        <button id="exportBtn" type="button">EXPORT SAVE</button>
+        <button id="importBtn" type="button">IMPORT SAVE</button>
+        <button id="resetBtn" type="button">RESET SAVE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="achOverlay">
+    <div id="achPanel">
+      <div id="achAwn"></div>
+      <div id="achHead">
+        <span id="achTitle">ACHIEVEMENTS</span>
+        <span id="achCount">0 / 17</span>
+        <button id="achClose" type="button" aria-label="Close achievements">
+          <svg viewBox="0 0 10 10" width="12" height="12" shape-rendering="crispEdges" stroke="#0f4a45" stroke-width="2"><path d="M2 2l6 6M8 2l-6 6"/></svg>
+        </button>
+      </div>
+      <div id="achList"></div>
+    </div>
+  </div>
+
+  <div id="lbOverlay">
+    <div id="lbPanel">
+      <div id="lbAwn"></div>
+      <div id="lbHead">
+        <span id="lbTitle">LEADERBOARD</span>
+        <span id="lbSub">TOP 100</span>
+        <button id="lbClose" type="button" aria-label="Close leaderboard">
+          <svg viewBox="0 0 10 10" width="12" height="12" shape-rendering="crispEdges" stroke="#4a2178" stroke-width="2"><path d="M2 2l6 6M8 2l-6 6"/></svg>
+        </button>
+      </div>
+      <div id="lbNameView">
+        <div class="lbnHint">CHOOSE A NAME TO JOIN<br>THE LEADERBOARD</div>
+        <input id="lbNameInput" type="text" maxlength="12" autocomplete="off" spellcheck="false" placeholder="NAME">
+        <div id="lbNameErr"></div>
+        <button id="lbNameOk" type="button">JOIN</button>
+      </div>
+      <div id="lbListView">
+        <div id="lbMe"></div>
+        <div id="lbRows"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="flashCover"></div>
+
+<script src="save.js"></script>
+<script src="js/01-core.js"></script>
+<script src="js/02-assets.js"></script>
+<script src="js/03-audio.js"></script>
+<script src="js/04-world.js"></script>
+<script src="js/05-entities.js"></script>
+<script src="js/06-cards.js"></script>
+<script src="js/07-title.js"></script>
+<script src="js/08-achievements.js"></script>
+<script src="js/09-render.js"></script>
+<script src="js/10-ui.js"></script>
+<script src="js/11-main.js"></script>
+<script src="js/12-leaderboard.js"></script>
+<script src="js/13-online.js"></script>
+</body>
+</html>

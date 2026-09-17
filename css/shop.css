@@ -1,0 +1,132 @@
+/* ============================================================
+   CoinFall Pixel — shop.css
+   Shop sidebar + touch controls.
+   Touch controls: LEFT and RIGHT clusters use the SAME button
+   size. In landscape the right cluster is 3-in-a-row; in portrait
+   it wraps into a 2-wide cluster (E, DOWN / JUMP) so both clusters
+   fit side-by-side on any phone width.
+   ============================================================ */
+/* ---------- Shop panel: VERTICAL SIDEBAR from the right ---------- */
+#shopPanel{
+  position:absolute;top:0;right:0;bottom:0;z-index:5;
+  width:clamp(300px,calc(var(--us)*104px),calc(100% - 8px));
+  display:flex;flex-direction:column;color:#f7f0dc;
+  background:
+    repeating-linear-gradient(90deg,rgba(0,0,0,.14) 0 2px,transparent 2px 38px),
+    linear-gradient(180deg,#a9744a 0%,#8a5a38 62%,#6e421f 100%);
+  border-left:3px solid #0c0a12;
+  box-shadow:-3px 0 0 0 #262032,-18px 0 42px rgba(8,5,16,.5);
+  transform:translateX(104%);transition:transform .45s cubic-bezier(.2,1.3,.35,1);
+}
+#shopPanel.open{transform:translateX(0)}
+#shopAwn{position:absolute;left:0;top:0;bottom:0;width:calc(var(--us)*6px);
+  background:repeating-linear-gradient(180deg,#e04a3a 0 calc(var(--us)*6px),#f7f0dc calc(var(--us)*6px) calc(var(--us)*12px));
+  border-right:3px solid #0c0a12;
+  box-shadow:inset calc(var(--us)*-1px) 0 0 rgba(0,0,0,.25)}
+#shopHead{flex:none;display:flex;flex-wrap:wrap;align-items:center;
+  gap:calc(var(--us)*1.5px) calc(var(--us)*2px);
+  padding:calc(var(--us)*2px) calc(var(--us)*2px) calc(var(--us)*2px) calc(var(--us)*6px + 8px);
+  background:rgba(30,18,8,.38);border-bottom:2px solid #54371c;
+  box-shadow:0 2px 0 rgba(0,0,0,.15)}
+#shopTitle{flex:1;font-size:max(10px,calc(var(--us)*4.5px));color:#f7c548;
+  text-shadow:2px 2px 0 rgba(12,8,4,.7);letter-spacing:1px}
+#shopClose{flex:none;background:#241708;border:2px solid #0c0a12;
+  box-shadow:inset 0 0 0 1px #4a3420;cursor:pointer;padding:max(7px,calc(var(--us)*2px));line-height:0}
+#shopClose svg{width:max(12px,calc(var(--us)*4px));height:auto;display:block}
+#shopClose:hover{background:#3a2410}
+#shopClose:active{transform:translateY(1px)}
+#shopSub{flex:1 1 100%;display:flex;align-items:center;
+  justify-content:space-between;gap:calc(var(--us)*2px)}
+#qtySel{display:flex;gap:3px}
+.qty{font-family:inherit;font-size:max(7px,calc(var(--us)*2.5px));cursor:pointer;
+  background:#241708;color:#d9b27f;border:2px solid #0c0a12;
+  box-shadow:inset 0 0 0 1px #4a3420;
+  padding:max(4px,calc(var(--us)*1.5px)) max(6px,calc(var(--us)*2px))}
+.qty:hover{color:#ffe9c0}
+.qty.on{background:#f7c548;color:#241708;
+  box-shadow:inset -2px -2px 0 #d99a26,inset 2px 2px 0 #ffef9e}
+#shopBal{display:flex;align-items:center;gap:5px;
+  font-size:max(9px,calc(var(--us)*4px));color:#f7c548}
+#balIcon{width:max(10px,calc(var(--us)*6px));image-rendering:pixelated}
+#shopRows{flex:1;overflow-y:auto;overflow-x:hidden;
+  padding:max(8px,calc(var(--us)*3px)) max(8px,calc(var(--us)*3px)) max(10px,calc(var(--us)*4px)) calc(var(--us)*6px + 8px);
+  display:flex;flex-direction:column;gap:max(5px,calc(var(--us)*2px))}
+#shopRows::-webkit-scrollbar{width:max(4px,calc(var(--us)*3px))}
+#shopRows::-webkit-scrollbar-thumb{background:#54371c}
+#shopRows::-webkit-scrollbar-track{background:rgba(20,12,5,.6)}
+.catdiv{display:flex;align-items:center;gap:calc(var(--us)*2px);
+  padding:calc(var(--us)*2px) 0 calc(var(--us)*1px)}
+.catdiv .cline{flex:1;height:2px;background:#d9b27f;
+  box-shadow:1px 1px 0 rgba(12,8,4,.8)}
+.catdiv .clabel{flex:none;font-size:max(8px,calc(var(--us)*3px));color:#d9b27f;
+  text-shadow:1px 1px 0 rgba(12,8,4,.8);letter-spacing:1px}
+.uprow{display:flex;align-items:center;gap:max(6px,calc(var(--us)*2.5px));
+  padding:max(6px,calc(var(--us)*2.5px));
+  background:linear-gradient(180deg,#31200e,#271809);
+  border:2px solid #120b04;
+  box-shadow:inset 0 0 0 2px #4a3420,inset 0 3px 0 rgba(255,224,160,.06),0 2px 0 rgba(0,0,0,.28)}
+.uprow:hover{background:linear-gradient(180deg,#3c2812,#30200e)}
+.uprow.shake{animation:shk .16s linear 2}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(calc(var(--us)*-2px))}75%{transform:translateX(calc(var(--us)*2px))}}
+.uicon{width:max(28px,calc(var(--us)*12px));image-rendering:pixelated;flex:none;
+  background:#1c1106;border:2px solid #0c0a12;box-shadow:inset 0 0 0 1px #4a3420;
+  padding:max(3px,calc(var(--us)*2px))}
+.umain{flex:1;min-width:0}
+.ul1{display:flex;align-items:center;gap:calc(var(--us)*2.5px);flex-wrap:wrap}
+.uname{font-size:max(9px,calc(var(--us)*3.5px));color:#ffe9c0;text-shadow:1px 1px 0 rgba(12,8,4,.8)}
+.ulvl{font-size:max(8px,calc(var(--us)*3px));color:#f7c548;text-shadow:1px 1px 0 rgba(12,8,4,.8)}
+.ulvl.mx{color:#8fd97a}
+.usub{font-size:max(7px,calc(var(--us)*2.75px));color:#d9b27f;margin-top:calc(var(--us)*2px)}
+.buy{
+  font-family:inherit;font-size:max(9px,calc(var(--us)*3.5px));flex:none;
+  display:flex;align-items:center;gap:max(4px,calc(var(--us)*1.5px));border:0;cursor:pointer;
+  background:#f7c548;color:#241708;
+  padding:max(6px,calc(var(--us)*1.5px)) max(8px,calc(var(--us)*2.5px));
+  min-height:max(30px,calc(var(--us)*7.5px));
+  box-shadow:inset -2px -2px 0 #d99a26,inset 2px 2px 0 #ffef9e,0 0 0 2px #0c0a12,0 2px 0 rgba(0,0,0,.3)}
+.buy img{width:max(9px,calc(var(--us)*4.5px));image-rendering:pixelated}
+.buy:hover{filter:brightness(1.07)}
+.buy:active{transform:translateY(2px);box-shadow:inset -2px -2px 0 #d99a26,inset 2px 2px 0 #ffef9e,0 0 0 2px #0c0a12}
+.buy.cant{background:#5a4630;color:#c7ab84;box-shadow:inset -2px -2px 0 #46351f,inset 2px 2px 0 #6e5638,0 0 0 2px #0c0a12}
+.buy.max{background:#2a1c0c;color:#a98f66;box-shadow:inset 0 0 0 2px #4a3420,0 0 0 2px #0c0a12;cursor:default}
+.buy.own{background:#2e4430;color:#8fd97a;box-shadow:inset 0 0 0 2px #3e5a40,0 0 0 2px #0c0a12;cursor:default}
+/* ---------- Touch controls ---------- */
+#touchUI{position:absolute;inset:0;pointer-events:none;z-index:4;display:none}
+#stage.started.touch #touchUI{display:block}
+.tgroup{position:absolute;bottom:clamp(14px,calc(var(--s)*5px),30px);
+  display:flex;gap:clamp(12px,calc(var(--s)*8px),40px);pointer-events:none}
+#tMove{left:clamp(16px,calc(var(--s)*14px),72px)}
+#tAct{right:clamp(16px,calc(var(--s)*14px),72px)}
+.tbtn{
+  pointer-events:auto;touch-action:none;
+  width:clamp(52px,calc(var(--s)*20px),88px);height:clamp(52px,calc(var(--s)*20px),88px);
+  display:flex;align-items:center;justify-content:center;
+  font-family:inherit;font-size:clamp(13px,calc(var(--s)*6px),24px);line-height:1;
+  color:#fdf6e3;text-shadow:1px 1px 0 rgba(12,10,18,.6);
+  background:rgba(120,120,132,.35);border:2px solid rgba(253,246,227,.55);
+  outline:2px solid rgba(12,10,18,.55);
+}
+.tbtn.held{background:rgba(165,165,178,.55)}
+.tbtn svg{width:clamp(18px,calc(var(--s)*8px),30px);height:auto;display:block}
+/* BOTH clusters share one big button size. The min() floor keeps the
+   clusters fitting side-by-side on the narrowest phones (18.5vw at
+   360px = 66px per button; 4 buttons + gaps + offsets <= 360). */
+#tMove .tbtn,#tAct .tbtn{
+  width:clamp(min(74px,18.5vw),calc(var(--s)*30px),132px);
+  height:clamp(min(74px,18.5vw),calc(var(--s)*30px),132px);
+}
+#tMove .tbtn svg,#tAct .tbtn svg{
+  width:clamp(27px,calc(var(--s)*12px),45px);height:auto;display:block}
+/* the E letter scales with its bigger button */
+#tE{font-size:clamp(18px,calc(var(--s)*9px),32px)}
+/* PORTRAIT: the right cluster wraps into 2-wide (E, DOWN / JUMP)
+   so three big buttons never spill into the left cluster */
+@media (orientation:portrait){
+  #tAct{
+    flex-wrap:wrap;justify-content:flex-end;align-content:flex-end;
+    width:calc(clamp(min(74px,18.5vw),calc(var(--s)*30px),132px)*2
+              + clamp(12px,calc(var(--s)*8px),40px));
+  }
+}
+#tE{display:none}
+#tE.show{display:flex}
