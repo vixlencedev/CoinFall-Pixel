@@ -1,9 +1,13 @@
 /* ============================================================
    CoinFall Pixel — 03-audio
-   SFX synthesizer + 3-track rotating soundtrack with crossfades.
+   SFX synthesizer + rotating soundtrack with crossfades.
 
-   v2: hell gate sounds — hellForm (gate forming rumble) and
-   hellTravel (dimension flashbang stinger).
+   v3: DIMENSION SOUNDTRACKS — 3 overworld + 3 hell tracks.
+   The active rotation follows `world`: overworld tracks in the
+   overworld, hell tracks in hell; traveling triggers an
+   automatic crossfade into the other set. Hell tracks are
+   slow, ambient, menacing; new drum modes 'doom' and 'none',
+   and per-track lead waveform ('sawtooth' for hell).
    ============================================================ */
 'use strict';
 
@@ -63,9 +67,12 @@ const sfx={
     tone(48,110,0.8,'triangle',0.11,0.35);},
 };
 
-/* --- SOUNDTRACK: 3 rotating tracks with 4s crossfades --- */
+/* --- SOUNDTRACK: rotating tracks with 4s crossfades ---
+   Tracks 0-2: overworld. Tracks 3-5: HELL (slow, ambient,
+   menacing, dark). The rotation follows the active dimension. */
 const CROSSFADE=4;
 
+/* ---------- OVERWORLD ---------- */
 const T1A=[
  76,79,84,79, 81,79,76,72,  74,76,77,81, 79,0,76,0,
  76,79,84,79, 81,79,76,72,  77,76,74,76, 74,0,67,0,
@@ -111,6 +118,71 @@ const T3B=[
 const T3BA=[45,45,41,41,48,48,43,43];
 const T3BB=[45,41,48,43,45,41,48,43];
 
+/* ---------- HELL ----------
+   HOLLOW CHANTS: super ambient & scary — 56 BPM, no drums,
+   sparse long eerie tones (tritones, minor 2nds) over a low
+   pedal drone, sawtooth lead. */
+const T4A=[
+ 38,0,0,0, 0,0,0,0,  44,0,0,0, 0,0,0,0,
+ 37,0,0,0, 0,0,0,0,  44,0,0,0, 0,0,0,0,
+ 38,0,0,0, 0,0,0,0,  45,0,0,0, 0,0,0,0,
+ 44,0,0,0, 0,0,43,0,  0,0,0,0,  0,0,0,0];
+const T4B=[
+ 38,0,0,0, 0,0,41,0,  0,0,0,0,  44,0,0,0,
+ 0,0,0,0,  0,0,0,0,  43,0,0,0,  0,0,0,0,
+ 38,0,0,0, 0,0,0,0,  46,0,0,0,  0,0,0,0,
+ 0,0,44,0, 0,0,0,0,  0,0,0,0,  0,0,0,0];
+const T4C=[
+ 36,0,0,0, 0,0,0,0,  43,0,0,0, 0,0,0,0,
+ 0,0,0,0,  38,0,0,0, 0,0,0,0,  0,0,0,0,
+ 36,0,0,0, 0,0,42,0,  0,0,0,0,  45,0,0,0,
+ 0,0,0,0,  0,0,0,0,  43,0,0,0,  0,0,0,0];
+const T4BA=[33,33,33,33,32,32,32,32];
+const T4BB=[33,33,31,31,33,33,34,34];
+const T4BC=[31,31,31,31,32,32,33,33];
+
+/* INFERNAL MARCH: dark & menacing — 72 BPM, doom drums,
+   chromatic descending riff over a grinding bass. */
+const T5A=[
+ 45,0,44,0, 43,0,42,0,  41,0,0,0,  0,0,44,0,
+ 45,0,44,0, 43,0,42,0,  41,0,0,0,  0,0,0,0,
+ 45,0,44,0, 43,0,42,0,  41,0,0,0,  47,0,0,0,
+ 46,0,45,0, 44,0,43,0,  41,0,0,0,  0,0,0,0];
+const T5B=[
+ 41,0,40,0, 39,0,38,0,  37,0,0,0,  0,0,40,0,
+ 41,0,40,0, 39,0,38,0,  37,0,0,0,  0,0,0,0,
+ 43,0,42,0, 41,0,40,0,  39,0,0,0,  0,0,0,0,
+ 41,0,40,0, 39,0,38,0,  37,0,0,0,  0,0,0,0];
+const T5C=[
+ 45,0,0,0,  44,0,0,0,  43,0,0,0,  42,0,41,0,
+ 40,0,0,0,  0,0,0,0,  44,0,0,0,  0,0,0,0,
+ 45,0,0,0,  44,0,0,0,  43,0,0,0,  42,0,41,0,
+ 40,0,39,0, 40,0,0,0,  0,0,0,0,  0,0,0,0];
+const T5BA=[29,29,28,28,29,29,30,30];
+const T5BB=[29,28,27,27,29,28,27,26];
+const T5BC=[26,26,27,27,28,28,29,29];
+
+/* PANDEMONIUM: straight evil — 80 BPM, tritone stabs,
+   dissonant descending runs, relentless doom pulse. */
+const T6A=[
+ 40,0,46,0, 40,0,0,0,  46,0,0,0,  40,0,47,0,
+ 40,0,46,0, 40,0,0,0,  49,0,48,0,  46,0,0,0,
+ 40,0,46,0, 40,0,0,0,  46,0,0,0,  40,0,0,0,
+ 51,0,50,0, 49,0,46,0,  40,0,0,0,  0,0,0,0];
+const T6B=[
+ 39,0,45,0, 39,0,0,0,  45,0,0,0,  39,0,46,0,
+ 39,0,45,0, 39,0,0,0,  48,0,47,0,  45,0,0,0,
+ 39,0,45,0, 39,0,0,0,  45,0,0,0,  39,0,0,0,
+ 50,0,49,0, 48,0,45,0,  39,0,0,0,  0,0,0,0];
+const T6C=[
+ 40,46,40,46, 40,0,46,0,  40,46,40,46,  47,0,0,0,
+ 40,46,40,46, 40,0,46,0,  49,48,46,0,  0,0,0,0,
+ 40,46,40,46, 40,0,46,0,  40,46,40,46,  0,0,0,0,
+ 51,0,50,0, 49,0,48,0,  47,0,46,0,  0,0,0,0];
+const T6BA=[28,28,34,34,28,28,35,35];
+const T6BB=[28,34,28,35,28,34,28,36];
+const T6BC=[26,26,32,32,26,26,33,33];
+
 const TRACKS=[
  {name:'SUNRISE RUN', bpm:112,drums:'bright',bassPat:[0,7,12,7],
   sections:[T1A,T1B,T1C,T1B], bass:[T1BA,T1BB,T1BC,T1BB]},
@@ -118,11 +190,24 @@ const TRACKS=[
   sections:[T2A,T2B,T2A,T2B], bass:[T2BA,T2BB,T2BA,T2BB]},
  {name:'STARLIGHT',   bpm:84, drums:'calm',  bassPat:[0,12,7,12],
   sections:[T3A,T3B,T3A,T3B], bass:[T3BA,T3BB,T3BA,T3BB]},
+ {name:'HOLLOW CHANTS', bpm:56,drums:'none', wave:'sawtooth',
+  bassPat:[0,0,0,0], vol:0.05,
+  sections:[T4A,T4B,T4C,T4B], bass:[T4BA,T4BB,T4BC,T4BB]},
+ {name:'INFERNAL MARCH',bpm:72,drums:'doom', wave:'sawtooth',
+  bassPat:[0,6,12,6],
+  sections:[T5A,T5B,T5C,T5B], bass:[T5BA,T5BB,T5BC,T5BB]},
+ {name:'PANDEMONIUM',  bpm:80,drums:'doom', wave:'sawtooth',
+  bassPat:[0,6,12,6],
+  sections:[T6A,T6B,T6C,T6B], bass:[T6BA,T6BB,T6BC,T6BB]},
 ];
+/* the active rotation follows the dimension */
+const activeTracks=()=>world==='hell'?TRACKS.slice(3):TRACKS.slice(0,3);
+
 const midi=n=>440*Math.pow(2,(n-69)/12);
 let trackIdx=0,trackStep=0,curBus=0;
 const buses=[null,null];
 let mNext=0;
+let lastMusicWorld=null;
 
 function mTone(bus,f,dur,type,vol,t){
   const o=AC.createOscillator(),gn=AC.createGain();
@@ -148,7 +233,25 @@ function scheduleMusic(){
   if(!AC||musicVol<=0||appPaused){mNext=0;return;}
   if(mNext===0||mNext<AC.currentTime-0.3)mNext=AC.currentTime+0.06;
   while(mNext<AC.currentTime+0.18){
-    const tr=TRACKS[trackIdx];
+    const list=activeTracks();
+    /* dimension changed mid-play: crossfade into the other set */
+    if(lastMusicWorld!==world){
+      const first=lastMusicWorld===null;
+      lastMusicWorld=world;
+      if(!first){
+        const t=mNext,nxt=(curBus+1)%2;
+        buses[nxt].gain.cancelScheduledValues(t);
+        buses[nxt].gain.setValueAtTime(0,t);
+        buses[nxt].gain.linearRampToValueAtTime(1,t+CROSSFADE);
+        buses[curBus].gain.cancelScheduledValues(t);
+        buses[curBus].gain.setValueAtTime(1,t);
+        buses[curBus].gain.linearRampToValueAtTime(0,t+CROSSFADE);
+        curBus=nxt;
+        trackIdx=0;trackStep=0;
+        continue;
+      }
+    }
+    const tr=list[trackIdx];
     const stepDur=60/tr.bpm/2;
     const len=tr.sections.length*64;
     if(trackStep>=len){
@@ -160,13 +263,14 @@ function scheduleMusic(){
       buses[curBus].gain.setValueAtTime(1,t);
       buses[curBus].gain.linearRampToValueAtTime(0,t+CROSSFADE);
       curBus=nxt;
-      trackIdx=(trackIdx+1)%TRACKS.length;
+      trackIdx=(trackIdx+1)%list.length;
       trackStep=0;
       continue;
     }
     const sec=(trackStep/64)|0, s=trackStep%64, t=mNext;
     const L=tr.sections[sec][s];
-    if(L)mTone(buses[curBus],midi(L),stepDur*0.92,'square',0.055,t);
+    if(L)mTone(buses[curBus],midi(L),stepDur*0.92,tr.wave||'square',
+      tr.vol||0.055,t);
     if(s%2===0){
       const r=tr.bass[sec][(s>>1)%8]+tr.bassPat[(s>>1)%4];
       mTone(buses[curBus],midi(r),stepDur*1.8,'triangle',0.085,t);}
@@ -178,10 +282,12 @@ function scheduleMusic(){
       if(s%8===0)mKick(buses[curBus],t);
       if(s%8===4)mNoise(buses[curBus],0.06,0.045,1.4,t);
       if(s%4===2)mNoise(buses[curBus],0.02,0.02,2.2,t);
-    }else{
-      if(s%16===0)mKick(buses[curBus],t);
-      if(s%4===0)mNoise(buses[curBus],0.015,0.02,2.2,t);
+    }else if(tr.drums==='doom'){
+      if(s%8===0)mKick(buses[curBus],t);
+      if(s%16===8)mNoise(buses[curBus],0.35,0.05,0.5,t);
+      if(s%4===2)mNoise(buses[curBus],0.02,0.015,1.6,t);
     }
+    /* 'calm' and 'none': no percussion */
     mNext+=stepDur;trackStep++;
   }
 }

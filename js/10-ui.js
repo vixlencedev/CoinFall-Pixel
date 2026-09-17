@@ -39,6 +39,7 @@ const achCountEl=document.getElementById('achCount');
 const achListEl=document.getElementById('achList');
 document.getElementById('achBtnImg').src=achBtnURL;
 document.getElementById('lbBtnImg').src=lbBtnURL;
+document.getElementById('cardBtnImg').src=cardBtnURL;
 
 /* ================= WORLD-UI SYNC (MAGMA COIN) ================= */
 const curCoinURL=()=>world==='hell'?magmaURL:coinURL;

@@ -4,9 +4,8 @@
    visual-viewport tracking, lifecycle + background heartbeat,
    the main loop, and boot. Must load last.
 
-   v3.1: FIX — boot opens the gate when resuming in hell too
-   (otherwise the return portal is mode 'none' and the player is
-   stranded in hell after a reload).
+   v3.2: entering hell grants the HELL achievement (grantAch).
+   v3.1: boot opens the gate when resuming in hell too.
    v3: HELL ECONOMY — travelTo flushes the departing world's
    score, swaps the per-world state containers, then rebuilds
    the dimension; E opens the shop in both worlds.
@@ -167,11 +166,7 @@ document.addEventListener('visibilitychange',()=>{
 addEventListener('pagehide',()=>setAppPaused(true));
 addEventListener('pageshow',()=>{if(!document.hidden){setAppPaused(false);updateCardBtn();}});
 
-/* ================= DIMENSION TRAVEL =================
-   Flashbang covers the ENTIRE screen; at peak coverage: flush
-   the departing world's score to ITS leaderboard, swap the
-   per-world state containers, rebuild the dimension, sync the
-   UI (MAGMA COIN icons / HUD theme). */
+/* ================= DIMENSION TRAVEL ================= */
 let traveling=false;
 const flashCover=document.getElementById('flashCover');
 function travelTo(tgt){
@@ -192,6 +187,8 @@ function travelTo(tgt){
     if(!buffs.helper)helper=null;
     syncWorldUI();
     try{lbNotifyWorldSwitch();}catch(e){}
+    /* first trip through the gate: HELL achievement */
+    if(tgt==='hell')grantAch('hellgate');
     save();
   },200);
   setTimeout(()=>{flashCover.classList.remove('on');traveling=false;},1000);
@@ -280,7 +277,6 @@ function update(dt){
   if(loading){updateLoad(dt);return;}
   time+=dt;
   cycleT=(cycleT+dt/CYCLE_LEN)%1;
-  /* land rebuild is overworld-only — hell platforms are permanent */
   const seg=landSegment(cycleT);
   if(started&&world==='over'&&seg!==landSeg)landQueued=true;
   landSeg=seg;
@@ -327,7 +323,6 @@ function update(dt){
   if(achT>=0.5){achT=0;if(started)checkAch();}
   updateAchPop(dt);
   if(setOpen){setT+=dt;if(setT>0.5){setT=0;refreshStats();}}
-  /* touch E: shop in both worlds, hell gate when standing near it */
   const teShow=started&&!shopOpen&&!cardOpen&&!achOpen&&!setOpen&&!lbOpen&&
     (nearShop()||nearHellGate());
   if(teShow!==tEShown){tEShown=teShow;tE.classList.toggle('show',teShow);}
@@ -351,10 +346,7 @@ function frame(t){
   update(dt);render();
 }
 
-/* ================= BOOT =================
-   load() restores the saved dimension; the gate is opened
-   immediately if it has been earned OR if we're resuming in hell
-   (otherwise the return portal would be stranded in 'none'). */
+/* ================= BOOT ================= */
 load();
 if(hellGate.mode==='none'&&(stats.earned>=HELL_UNLOCK||world==='hell'))
   hellGate.mode='open';
