@@ -310,9 +310,11 @@ function buy(u){
     const rr=rowRefs.find(r=>r.u===u);
     if(rr){rr.row.classList.remove('shake');void rr.offsetWidth;rr.row.classList.add('shake');}
     return;}
-  if(u.id==='worker'||u.id==='devil'){
+    if(u.id==='worker'||u.id==='devil'){
     coins-=b.total;
-    workerOwned=true;stats.upgrades++;
+    workerOwned=true;
+    if(world==='hell')HL.workerOwned=true; else OW.workerOwned=true;
+    stats.upgrades++;
     worker.x=clamp(player.x+16,4,VW-14-worker.w);
     worker.y=landYFor(worker.x+5)-worker.h;
     worker.vx=0;worker.vy=0;worker.target=null;worker.cool=0.5;
