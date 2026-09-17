@@ -2,14 +2,15 @@
    CoinFall Pixel — 09-render
    the full draw pipeline.
 
-   v7.3: HELL SHOP — Devil worker sprite + label in hell (micro
-   label shows FIREBALL PWR %), fireball projectiles drawn, hot
-   (overheated) coins flicker with a flame tuft. Everything else
-   as v7.2 (magma coins, hell stall, hell ambience).
+   v7.4: DISSIPATION FIX — coins that can never despawn (maxed
+   dissipation) never enter the blink phase; they stay solidly
+   visible. Previously they strobed forever after 10s, which
+   read as coins despawning.
+   v7.3: hell shop — Devil + fireballs + hot-coin flames.
    ============================================================ */
 'use strict';
 
-console.info('%cCFPX render: v7.3 (hell shop)','color:#4fa8dd;font-weight:bold');
+console.info('%cCFPX render: v7.4 (immortal coins)','color:#4fa8dd;font-weight:bold');
 
 let sx=0,sy=0;
 function windSway(x,amp,spd){return animsOn?Math.sin(time*spd+x*0.05)*amp:0;}
@@ -167,13 +168,10 @@ function drawLava(){
     }
   }
 }
-/* devil fireballs: LARGE magma orb, hot core, flame tail —
-   impossible to miss at any HELLFIRE level */
 function drawFireballs(){
   if(world!=='hell')return;
   for(const f of fireballs){
     const x=Math.round(f.x),y=Math.round(f.y);
-    /* tail opposite travel direction */
     const tx=Math.round(clamp(-f.vx*0.06,-5,5)),
           ty=Math.round(clamp(-f.vy*0.06,-5,5));
     g.fillStyle='#c23a10';
@@ -208,14 +206,17 @@ function render(){
   drawLava();
   drawHellGate();
 
+  /* immortal coins (maxed dissipation) never enter the blink
+     phase — they stay solidly visible instead of strobing */
+  const willDie=restLife()<1e8;
   for(const c of coinList){
     if(c.state==='fall'&&!c.mag){
       const sw=clamp(10-(c.landY-(c.y+8))/10,3,10);
       g.fillStyle='rgba(20,30,20,0.20)';
       g.fillRect(Math.round(c.x+4-sw/2+sx),c.landY-1+sy,Math.round(sw),2);
     }else if(c.state!=='fall'){
-      const blink=c.portalC?3.5:REST_BLINK;
-      if(c.restT>blink&&Math.floor(c.restT*8)%2===0)continue;
+      const blink=c.portalC?3.5:(willDie?REST_BLINK:0);
+      if(blink>0&&c.restT>blink&&Math.floor(c.restT*8)%2===0)continue;
     }
     const spin=animsOn?c.spin+(c.state==='fall'?time*6:c.restT*2):0;
     const fr=(world==='hell'?magmaFrame:coinFrame)(Math.abs(Math.cos(spin)));

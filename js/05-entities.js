@@ -3,12 +3,13 @@
    player physics, Bob/Helper/Devil AI, coins + magnet, the coin
    portal, fireballs, and the particle / floating-text system.
 
-   v4.1: FIREBALL REWORK — HELLFIRE 0 = one shot per ~6s with a
-   wide, loosely-guided arc that can even sail past; each level
-   adds rate (+), speed (+) and homing tightness (+). Fireballs
-   are LARGE with a constant flame trail (always visible). Hot
-   coin trail is much more prominent. Hell spawn rate follows
-   MAGMA COIN SPAWN RATE.
+   v4.2: DISSIPATION FIX — the rest-despawn is hard-gated
+   (life >= 1e8 can never remove a coin, regardless of timer
+   math), and hell's coin cap rises to 60 when dissipation is
+   maxed (immortal coins would otherwise saturate the 24 cap
+   and halt spawning entirely).
+   v4.1: fireball rework (slow base rate, always-visible orbs),
+   prominent hot-coin trail, hell spawn rate.
    ============================================================ */
 'use strict';
 
@@ -158,7 +159,11 @@ function updateCoins(dt){
   const cTS=shopOpen?0.35:1, gravM=fallMult();
   spawnT-=dt*cTS;
   if(spawnT<=0){
-    const cap=(portal&&portal.mode==='on')?90:COIN_CAP;
+    /* coin cap: portal rush 90; hell with maxed dissipation 60
+       (immortal coins must not saturate the default 24 and stall
+       spawning); otherwise the standard cap */
+    const cap=(portal&&portal.mode==='on')?90
+      :(world==='hell'&&lv.dissipate>=100?60:COIN_CAP);
     if(coinList.length<cap){spawnCoin();
       if(Math.random()<luckChance())spawnCoin(coinList[coinList.length-1].x);}
     spawnT=spawnInterval()*rand(0.8,1.2);
@@ -184,7 +189,10 @@ function updateCoins(dt){
       if(c.y+8>=c.landY){c.y=c.landY-8;c.vy=0;c.state='rest';c.restT=0;dust(c.x+4,c.landY,2);}
     }else{
       c.restT+=dt*cTS;
-      if(c.restT>life){greyPuff(c.x+4,c.y+4);sfx.miss();coinList.splice(i,1);continue;}
+      /* HARD GATE: life >= 1e8 (maxed dissipation) can NEVER
+         remove a coin — no timer math can bypass this */
+      if(life<1e8&&c.restT>life){
+        greyPuff(c.x+4,c.y+4);sfx.miss();coinList.splice(i,1);continue;}
     }
     /* overheated coins: LOUD fire trail — hard to miss */
     if(c.hot&&particlesOn&&Math.random()<dt*34)
@@ -230,13 +238,10 @@ function updateDevilFire(dt){
     const t=f.tgt;
     if(!t||!coinList.includes(t)){fireballs.splice(i,1);continue;}
     const dx=(t.x+4)-f.x,dy=(t.y+4)-f.y,d=Math.hypot(dx,dy)||1;
-    /* steering scaled by accuracy: low HELLFIRE curves wide and
-       can sail past the coin; high HELLFIRE homes tight */
     const k=Math.min(1,f.acc*6*dt);
     f.vx+=(dx/d*f.spd-f.vx)*k;
     f.vy+=(dy/d*f.spd-f.vy)*k;
     f.x+=f.vx*dt;f.y+=f.vy*dt;
-    /* constant trail — the fireball is NEVER just invisible math */
     if(particlesOn&&Math.random()<dt*45)
       parts.push({x:f.x+rand(-2,2),y:f.y+rand(-2,2),
         vx:-f.vx*0.06+rand(-8,8),vy:-f.vy*0.06+rand(-8,8),gz:0,t:0,
