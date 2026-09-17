@@ -1,18 +1,13 @@
 /* ============================================================
-   CoinFall Pixel — SaveData module (v4.1)
-   v4.1: leaderboard record extended.
-   - lb { uid, epoch, name, resetAt } — `name` is the persistent
-     mirror of the player's leaderboard name (written at claim /
-     submit time by 13-online.js) and `resetAt` is the cached
-     season start time. Both are round-tripped by sanitize() so
-     boot name recovery works even if stats.name is ever lost.
-     Additive change: older saves simply lack the new fields and
-     get the defaults — no migration needed.
-   v4.0: leaderboard SEASON support.
-   - lb { uid, epoch } — epoch is the last leaderboard generation
-     the client has seen. When the server's lbMeta/epoch is higher,
-     the client wipes its local name and re-prompts (season reset).
-   Everything else identical to v3.9 (web-only, three storage tiers).
+   CoinFall Pixel — SaveData module (v4.2)
+   v4.2: DIMENSIONS.
+   - world: 'over'|'hell' — the dimension the player logged out in.
+   - hell: full per-world progression record (MAGMA COIN economy):
+     { coins, earned, workerOwned, cardUnlock, cardReadyAt,
+       levels, buffs, order }. Completely separate from the
+     overworld record — zero carryover by design.
+   v4.1: lb { uid, epoch, name, resetAt }.
+   v4.0: lb { uid, epoch } season support.
    ============================================================ */
 const SaveData = (() => {
   'use strict';
@@ -34,10 +29,17 @@ const SaveData = (() => {
       order: []
     },
     audio: { sfx:100, music:55 },
-    prefs: { particles:true, clouds:true, anims:true, shake:true, stars:true },
+    prefs: { particles:true, clouds:true, anims:true, shake:true, stars:true, popText:true },
     stats: { playtime:0, earned:0, upgrades:0, started:false, tut:false, name:'' },
     lb:    { uid:'', epoch:0, name:'', resetAt:0 },
     ach:   { unlocked:{} },
+    world: 'over',
+    hell:  {
+      coins:0, earned:0, workerOwned:false, cardUnlock:false, cardReadyAt:0,
+      levels: { value:0, spawn:0, radius:0, gravity:0, luck:0, wspeed:0, cardcd:0 },
+      buffs:  { magnet:0, dbljump:0, speed2x:0, helper:0, coins2x:0, portal:0 },
+      order: []
+    },
     meta:  { created:Date.now(), updated:Date.now(), version:VERSION }
   });
 
@@ -80,9 +82,6 @@ const SaveData = (() => {
     if(raw.lb && typeof raw.lb==='object'){
       s.lb.uid     = (typeof raw.lb.uid==='string') ? raw.lb.uid.replace(/[^a-z0-9_]/gi,'').slice(0,24) : '';
       s.lb.epoch   = num(raw.lb.epoch, 0, 0, 1e9);
-      /* v4.1: persist the name mirror + cached season start so
-         13-online's boot recovery can restore stats.name even if
-         the stats record ever loses it */
       s.lb.name    = nameStr(raw.lb.name, '');
       s.lb.resetAt = num(raw.lb.resetAt, 0, 0, 8.64e15);
     }
@@ -90,6 +89,21 @@ const SaveData = (() => {
        raw.ach.unlocked && typeof raw.ach.unlocked==='object'){
       for(const k in raw.ach.unlocked)
         if(raw.ach.unlocked[k]) s.ach.unlocked[k] = 1;
+    }
+    /* v4.2: dimension */
+    s.world = raw.world==='hell' ? 'hell' : 'over';
+    if(raw.hell && typeof raw.hell==='object'){
+      const h = raw.hell;
+      s.hell.coins       = num(h.coins, 0, 0, 1e15);
+      s.hell.earned      = num(h.earned, 0, 0, 1e15);
+      s.hell.workerOwned = bool(h.workerOwned, false);
+      s.hell.cardUnlock  = bool(h.cardUnlock, false);
+      s.hell.cardReadyAt = num(h.cardReadyAt, 0, 0, 8.64e15);
+      if(h.levels && typeof h.levels==='object')
+        for(const k in s.hell.levels) s.hell.levels[k] = num(h.levels[k], 0, 0, 1e6);
+      if(h.buffs && typeof h.buffs==='object')
+        for(const k in s.hell.buffs) s.hell.buffs[k] = num(h.buffs[k],0,0,9);
+      s.hell.order = strArr(h.order, []);
     }
     if(raw.meta && typeof raw.meta==='object'){
       if(typeof raw.meta.created==='number') s.meta.created = raw.meta.created;
@@ -324,6 +338,8 @@ const SaveData = (() => {
       stats:   snapshot.stats,
       lb:      snapshot.lb,
       ach:     snapshot.ach,
+      world:   snapshot.world,
+      hell:    snapshot.hell,
       meta:    state.meta
     });
     merged.meta.updated = Date.now();

@@ -4,17 +4,10 @@
    procedural scattered platform generator, land-switch state
    machine, and the day/night cycle with sky rendering.
 
-   v3: HELL POLISH —
-   - Gate: outer glow + side fangs removed (clean vortex); the
-     gate uses the fire palette in the overworld and an
-     overworld-colored (teal/blue) palette inside hell, matching
-     where it leads. Ember colors follow the palette.
-   - Hell platforms: rich detail — cooling crust patches, cap
-     glints, lit/shadow edges, strata, cracks, magma drips,
-     obsidian chunks.
-   - Background FX: lava veins cascading down the big peaks with
-     a flowing bright blob, drifting smoke puffs in the sky
-     (replacing clouds) and falling ash flakes.
+   v3.1: gate base removed (clean floating vortex); shop position
+   uniform in both dimensions (hell stall sits where the shop is).
+   v3: HELL POLISH — detailed hell platforms, background lava
+   veins with flowing blobs, drifting sky smoke, ash flakes.
    v2: DIMENSIONS — buildLayers/makePlatSpr branch on `world`,
    applyDimension() swaps the whole world, hell gate + ambience.
    ============================================================ */
@@ -142,11 +135,10 @@ function buildLayers(){
 }
 
 /* ================= HELL LAYERS =================
-   Terraria-pit inspired: jagged red-rock mountains (no snow),
-   dark lava mounds, stalagmite spires with magma tips, scorched
-   ground with a magma crust and glowing cracks, ash debris, the
-   WELCOME TO HELL sign, lava pools (static body baked here; the
-   animated surface highlight is drawn per-frame in render), and
+   Terraria-pit inspired: jagged red-rock mountains, dark lava
+   mounds, stalagmite spires, scorched ground with a magma crust
+   and glowing cracks, ash debris, the WELCOME TO HELL sign, lava
+   pools (static body baked; animated highlight per-frame), and
    lava veins cascading down the big peaks (drawn per-frame). */
 function buildHellLayers(){
   let t;
@@ -233,9 +225,7 @@ function buildHellLayers(){
     flagRef=PLATFORMS.find(p=>p.high)||null;}
 }
 
-/* ================= HELL SKY AMBIENCE =================
-   Smoke puffs drift like the overworld clouds; ash flakes fall
-   gently. newSmoke is defined here so buildHellLayers can use it. */
+/* ================= HELL SKY AMBIENCE ================= */
 function newSmoke(x){
   return {x:x!==undefined?x:rand(-60,VW),
     y:rand(8,Math.max(30,GROUND_Y-130)),
@@ -300,8 +290,7 @@ function layout(){
   stage.style.setProperty('--us',Math.max(SCALE,1.5));
   document.documentElement.style.setProperty('--us',Math.max(SCALE,1.5));
   GROUND_Y=VH-24;
-  /* hell has no shop: the platforms may use the full width */
-  SHOP_X=world==='hell'?VW-8:VW-SHOP_W-8; SHOP_CX=SHOP_X+SHOP_W/2;
+  SHOP_X=VW-SHOP_W-8; SHOP_CX=SHOP_X+SHOP_W/2;
   PLATFORMS=[{x:0,y:GROUND_Y,w:VW,ground:true,on:true}];
   {let fi=0;
    for(const d of genLayout())
@@ -340,11 +329,12 @@ function layout(){
 
 /* ================= DIMENSION SWAP =================
    Rebuilds the entire world for `world` (set before calling):
-   platforms regenerated (hell spreads over the full width — no
-   shop), layers + ground + sprites rebuilt for the theme, and
-   every entity repositioned. Called UNDER the flashbang cover. */
+   platforms regenerated, layers + ground + sprites rebuilt for
+   the theme, and every entity repositioned. Called UNDER the
+   flashbang cover. The state containers were already exchanged
+   by travelTo (11-main) BEFORE this runs. */
 function applyDimension(){
-  SHOP_X=world==='hell'?VW-8:VW-SHOP_W-8; SHOP_CX=SHOP_X+SHOP_W/2;
+  SHOP_X=VW-SHOP_W-8; SHOP_CX=SHOP_X+SHOP_W/2;
   const ground=PLATFORMS.find(p=>p.ground)||
     {x:0,y:GROUND_Y,w:VW,ground:true,on:true};
   ground.x=0;ground.y=GROUND_Y;ground.w=VW;
@@ -377,9 +367,9 @@ function applyDimension(){
 
 /* ================= HELL GATE =================
    Forms on the left of the overworld once lifetime earned hits
-   HELL_UNLOCK. Clean vortex — no outer glow, no side fangs.
-   Palette follows the DESTINATION: fire colors in the overworld
-   (leads to hell), cool teal/blue inside hell (leads home). */
+   HELL_UNLOCK. Clean floating vortex — no base, no side pieces,
+   no glow. Palette follows the DESTINATION: fire colors in the
+   overworld (leads to hell), cool teal/blue inside hell (home). */
 function updateHellGate(dt){
   hellGate.y=GROUND_Y;
   if(world==='over'&&hellGate.mode==='none'&&stats.earned>=HELL_UNLOCK){
@@ -414,22 +404,14 @@ function drawHellGate(){
   if(hellGate.mode==='none')return;
   const gx=hellGate.x,gy=hellGate.y;
   const grow=hellGate.mode==='form'?clamp(hellGate.t/HELL_GATE_FORM,0,1):1;
-  /* rocky base — tinted toward the destination world */
-  const home=world==='hell';
-  g.fillStyle=home?'#1c2a1a':'#2a1210';g.fillRect(gx-12,gy-4,24,4);
-  g.fillStyle=home?'#26382a':'#3a1a14';
-  g.fillRect(gx-14,gy-5,4,2);g.fillRect(gx+10,gy-5,4,2);
   if(hellGate.mode==='form'&&grow<0.22)return;
+  const home=world==='hell';
   const wid=Math.max(2,Math.round(9*grow));
-  const hgt=Math.max(3,Math.round(26*grow));
-  const cy=gy-4-Math.round(hgt/2);
-  const puls=animsOn?0.5+0.5*Math.sin(time*6):0.7;
-  /* fire vortex (squashed circle = oval gate) — clean, no glow,
-     no side fangs */
+  const cy=gy-4-Math.round(26*grow/2);
+  /* clean floating vortex — no base, no side pieces, no glow */
   g.save();
   g.translate(gx,cy);g.scale(0.55,1);
   if(home){
-    /* in hell: cool overworld palette (teal sky / blue water) */
     fillCircle(g,0,0,wid+2,'#0a1424');
     fillCircle(g,0,0,wid,'#143a5c');
     fillCircle(g,0,0,Math.round(wid*0.72),'#2fa8a0');
@@ -440,7 +422,6 @@ function drawHellGate(){
       g.fillStyle=i%2?'#dffcff':'#4fd6e8';
       g.fillRect(Math.round(Math.cos(a)*rr)-1,Math.round(Math.sin(a)*rr*0.8)-1,2,2);}
   }else{
-    /* in the overworld: hellish fire palette */
     fillCircle(g,0,0,wid+2,'#1a0a08');
     fillCircle(g,0,0,wid,'#5c1408');
     fillCircle(g,0,0,Math.round(wid*0.72),'#c23a10');
@@ -457,8 +438,7 @@ function drawHellGate(){
 
 /* ================= HELL AMBIENCE ================= */
 function updateHellAmbience(dt){
-  /* smoke puffs drift like clouds (animsOn only gates nothing here —
-     clouds drift regardless; the wobble is what animates) */
+  /* smoke puffs drift like clouds */
   for(const s of hellSmoke){
     s.x+=s.v*dt;
     if(s.x-14*s.s>VW+12)Object.assign(s,newSmoke(-16*s.s-12));
@@ -484,10 +464,6 @@ function updateHellAmbience(dt){
 /* ================= DAY / NIGHT CYCLE ================= */
 const CYCLE_LEN=420;
 let cycleT=0.30, nightAmt=0, warmAmt=0, curPal=null;
-/* skyT is the VISUAL sky clock, decoupled from the game clock:
-   it starts at deep night for the loading screen, then sweeps
-   night -> sunrise -> morning as the menu appears. Once the sweep
-   finishes, 11-main locks skyT back onto cycleT. */
 let skyT=0.75;
 const BANDS=[0,0.18,0.38,0.58,0.76,1.0];
 const PAL_DAY    =[[79,168,221],[104,185,232],[140,208,242],[168,221,247],[194,236,251]];
@@ -635,17 +611,13 @@ function drawBirds(){
 }
 
 /* ================= LAND SWITCH =================
-   The island rebuilds twice per day/night cycle: once as the day is
-   about to set (sky turning sunset) and once as the night is about to
-   end (sky turning sunrise). HELL PLATFORMS ARE PERMANENT — the
-   rebuild queue is only fed in the overworld (see 11-main). */
+   The island rebuilds twice per day/night cycle. HELL PLATFORMS
+   ARE PERMANENT — the rebuild queue is only fed in the overworld
+   (see 11-main). */
 const PLAT_TOP=6, PLAT_H=15, SPR_H=PLAT_TOP+PLAT_H;
 const LAND_OUT=0.7, LAND_WAIT=1.0, LAND_POP=0.5, LAND_STAG=0.14;
 const LAND_DUSK=0.45, LAND_DAWN=0.95;
 let landPhase='idle', landT=0, landQueued=false;
-/* dusk/dawn are tracked as SEGMENTS, not threshold crossings: a segment
-   flips exactly once per cycle, so a stale rAF timestamp after a tab
-   resume can never rewind cycleT and re-fire the rebuild */
 let landSeg=(cycleT>=LAND_DUSK&&cycleT<LAND_DAWN)?1:(cycleT>=LAND_DAWN?2:0);
 function landSegment(t){return t>=LAND_DUSK&&t<LAND_DAWN?1:(t>=LAND_DAWN?2:0);}
 
@@ -680,8 +652,8 @@ function makePlatSpr(p){
   return c;
 }
 /* hell platform: magma top imitating grass over dark rock —
-   rich detail pass: cooling crust patches, cap glints, lit and
-   shadow edges, strata, cracks, magma drips, obsidian chunks */
+   rich detail: cooling crust patches, cap glints, lit/shadow
+   edges, strata, cracks, magma drips, obsidian chunks */
 function makeHellPlatSpr(p){
   const w=p.w+4,c=mkCanvas(w,SPR_H)[0],x=c.getContext('2d');
   const OX=p.x-2,OY=p.y-PLAT_TOP;
@@ -731,19 +703,10 @@ function sprWhite(src){
   return c;
 }
 
-/* scattered random layout: 2 wide + 2 narrow + 1 grand platform, widths
-   re-rolled (and scaled to screen) every rebuild. Placement is dealt
-   across the FULL map width via random cut points so platforms can never
-   bunch on one side or overlap horizontally, heights are drawn from 5
-   spread tiers in random order so they never stack nor all hug the
-   ground, and a jump-graph BFS with auto-repair guarantees every
-   platform stays climbable. */
+/* scattered random layout (see original notes — unchanged) */
 function genLayout(){
   const G=GROUND_Y,XMIN=8,XMAX=SHOP_X-16;
   const usable=XMAX-XMIN;
-  /* tall/portrait viewports: spread the five tiers over the extra
-     height. tierGap is capped so adjacent rises + jitter stay under
-     the real jump arc (MAXRISE) and the BFS pass stays satisfiable */
   const vspan=clamp(Math.round((VH-216)*0.5),0,160);
   const tierGap=21.5+vspan/4;
   const wsc=clamp(usable/560,0.62,1.15);

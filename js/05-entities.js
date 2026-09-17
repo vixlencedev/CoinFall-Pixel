@@ -3,10 +3,11 @@
    player physics, Bob/Helper AI, coins + magnet, the coin
    portal, and the particle / floating-text system.
 
-   v2: POPUP TEXT pref — the floating +N texts in collect() and
-   workerCollect() are gated on popTextOn (the settings toggle).
-   Nothing else is gated: bursts, sounds, streaks, counter flash
-   and the portal message are unchanged.
+   v3: DIMENSION ECONOMY — pickups credit the ACTIVE world's
+   lifetime (HL.earned in hell = MAGMA COIN lifetime,
+   stats.earned in the overworld). Coin value/upgrades read the
+   live per-world state.
+   v2: POPUP TEXT pref gates the floating +N texts.
    ============================================================ */
 'use strict';
 
@@ -23,14 +24,15 @@ function dust(x,y,n){if(!particlesOn)return;
   for(let i=0;i<n;i++)parts.push({x:x+rand(-4,4),y:y-1,
     vx:rand(-28,28),vy:rand(-42,-8),gz:120,t:0,life:rand(0.3,0.5),col:'#cbb9a0',sz:rand()<0.5?2:1});}
 function burst(x,y){if(!particlesOn)return;
-  const cols=['#f7c548','#ffef9e','#d99a26'];
+  const cols=world==='hell'?['#ff8c30','#ffe9a8','#c23a10']:['#f7c548','#ffef9e','#d99a26'];
   for(let i=0;i<9;i++)parts.push({x,y,vx:rand(-95,95),vy:rand(-170,-30),gz:340,t:0,
     life:rand(0.4,0.75),col:cols[Math.floor(rand(0,3))],sz:rand()<0.4?2:1});
   for(let i=0;i<3;i++)parts.push({x,y,vx:rand(-40,40),vy:rand(-90,-20),gz:0,t:0,life:0.5,
-    col:'#fff3c4',sz:1,star:true});}
+    col:world==='hell'?'#ffd24a':'#fff3c4',sz:1,star:true});}
 function miniBurst(x,y){if(!particlesOn)return;
   for(let i=0;i<5;i++)parts.push({x,y,vx:rand(-60,60),vy:rand(-110,-30),
-    gz:300,t:0,life:rand(0.3,0.55),col:['#f7c548','#ffef9e','#d99a26'][Math.floor(rand(0,3))],sz:1});}
+    gz:300,t:0,life:rand(0.3,0.55),
+    col:(world==='hell'?['#ff8c30','#ffe9a8','#c23a10']:['#f7c548','#ffef9e','#d99a26'])[Math.floor(rand(0,3))],sz:1});}
 function greyPuff(x,y){if(!particlesOn)return;
   for(let i=0;i<5;i++)parts.push({x,y,vx:rand(-25,25),vy:rand(-50,-10),
     gz:60,t:0,life:0.4,col:'#8b8498',sz:1});}
@@ -126,7 +128,9 @@ function collect(c){
   combo++;comboT=2.2;
   const mult=streakMult(combo);
   const v=Math.round((1+lv.value)*mult*coinMult());
-  coins+=v;stats.earned+=v;
+  coins+=v;
+  /* credit the ACTIVE world's lifetime earned */
+  if(world==='hell')HL.earned+=v; else stats.earned+=v;
   burst(c.x+4,c.y+4);
   /* POPUP TEXT toggle: only the floating +N is gated */
   if(popTextOn)popText(c.x+4,c.y-2,'+'+group(v),
@@ -139,7 +143,8 @@ function collect(c){
 }
 function workerCollect(c){
   const v=Math.round((1+lv.value)*coinMult());
-  coins+=v;stats.earned+=v;
+  coins+=v;
+  if(world==='hell')HL.earned+=v; else stats.earned+=v;
   miniBurst(c.x+4,c.y+4);
   /* POPUP TEXT toggle: only the floating +N is gated */
   if(popTextOn)popText(c.x+4,c.y-2,'+'+group(v),'#f7f0dc',1);
@@ -161,9 +166,7 @@ function updateCoins(dt){
   for(let i=coinList.length-1;i>=0;i--){const c=coinList[i];
     const life=c.portalC?4.5:REST_LIFE;
     const dx=pcx-(c.x+4),dy=pcy-(c.y+4),d=Math.hypot(dx,dy);
-    /* MAGNET: ANY coin entering the radius becomes homing — flying,
-       resting on a platform, or stuck under one. It detaches and flies
-       STRAIGHT to the player, passing through platforms if needed. */
+    /* MAGNET: ANY coin entering the radius becomes homing */
     if(mR>0&&!c.mag&&d<mR){c.mag=true;c.state='fall';c.restT=0;c.vx=0;c.vy=0;}
     if(c.mag){
       if(d>1){
@@ -173,8 +176,6 @@ function updateCoins(dt){
       }
     }else if(c.state==='fall'){
       if(c.vx){c.x+=c.vx*dt;c.vx*=Math.pow(0.5,dt);}
-      /* landing spot recomputed from CURRENT x: sideways-ejected portal
-         coins drift past short platform edges and keep falling */
       const gb=groundBelow(c.x+4,c.y+8);
       if(gb<1e9)c.landY=gb;
       c.vy=Math.min(c.vy+300*gravM*dt,240*gravM);
@@ -192,8 +193,6 @@ function updateCoins(dt){
 function updatePlayer(dt){
   player.dropT=Math.max(0,player.dropT-dt);
   let move=0;
-  /* lbOpen joins the input-block set: the leaderboard overlay must
-     freeze the player just like settings/achievements do */
   if(!shopOpen&&!setOpen&&!achOpen&&!lbOpen){if(keys.left)move--;if(keys.right)move++;}
   if(move){player.face=move;player.moved=true;}
   const acc=player.grounded?1500:950;
@@ -228,7 +227,6 @@ function updatePlayer(dt){
     if(fallV>320){sfx.land();dust(player.x+5,player.y+player.h,5);}}
   player.squash=approach(player.squash,0,dt*1.4);
   if(player.grounded&&Math.abs(player.vx)>12)player.animT+=Math.abs(player.vx)*dt/26;
-  /* tutorial completes once the player has moved, jumped AND dropped */
   if(!stats.tut&&player.moved&&player.jumped&&player.dropped){
     stats.tut=true;save();
   }
@@ -246,17 +244,12 @@ function tryDrop(){
     dust(player.x+5,player.y+player.h,3);sfx.drop();}
 }
 
-/* ================= WORKER AI (Bob & Helper) =================
-   Bob: weighted coin scoring + waypoint detours up to step platforms.
-   Helper (hMode): fully independent — greedy NEAREST reachable coin,
-   own retarget cadence, own hop rhythm, slightly slower, and when idle
-   it hangs around the player instead of roving like Bob. */
+/* ================= WORKER AI (Bob & Helper) ================= */
 function updateWorkerEnt(w,dt,hMode){
   w.cool=Math.max(0,w.cool-dt);
   w.jumpCd=Math.max(0,w.jumpCd-dt);
   w.dropT=Math.max(0,w.dropT-dt);
   if(hMode){
-    /* --- HELPER: own decisions, greedy nearest-reachable coin --- */
     w.retarget-=dt;
     if(w.retarget<=0||(w.target&&!coinList.includes(w.target))){
       w.retarget=0.22+Math.random()*0.18;
@@ -271,7 +264,6 @@ function updateWorkerEnt(w,dt,hMode){
       w.target=best;
     }
   }else{
-    /* --- BOB: weighted scoring + step-platform waypoints --- */
     w.retarget-=dt;
     if(w.retarget<=0||(w.target&&!coinList.includes(w.target)&&!w.target.wp)){
       w.retarget=0.35;
@@ -304,7 +296,6 @@ function updateWorkerEnt(w,dt,hMode){
     if(Math.abs(dx)>5)move=dx>0?1:-1;
     if(w.grounded&&w.jumpCd<=0){
       if(hMode){
-        /* helper: snappier, springier hops of its very own */
         if(dy<-10&&dy>-90&&Math.abs(dx)<64){
           w.vy=JUMP_V*(0.9+Math.random()*0.12);w.grounded=false;
           w.jumpCd=0.28+rand(0,0.3);
@@ -322,7 +313,6 @@ function updateWorkerEnt(w,dt,hMode){
       }
     }
   }else{
-    /* idle: helper shadows the player's area, Bob roves the whole map */
     if(hMode){
       if(w.wanderX==null||w.wanderT<=0){
         w.wanderX=clamp(player.x+rand(-90,90),20,VW-30);

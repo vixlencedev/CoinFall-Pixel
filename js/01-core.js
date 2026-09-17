@@ -4,29 +4,24 @@
    shared game state, menu-exclusivity registry, and save/load
    glue. Loads right after save.js.
    NOTE: load() is INVOKED from 11-main's boot sequence, not here.
-   Calling it at parse time would write sfxVol/musicVol before
-   03-audio.js initializes them (ReferenceError), silently
-   truncating the restore of prefs, stats and achievements.
 
-   v4: DIMENSIONS — world ('over'|'hell'), the hell gate state
-   (forms on the left once lifetime earned >= HELL_UNLOCK; in hell
-   the same gate is the way back home), and nearHellGate().
-   The unlock is DERIVED from stats.earned (no new save state).
-   Boot always starts in the overworld.
+   v5: DIMENSION ECONOMY — the live gameplay vars (coins, lv,
+   buffs, workerOwned, cardUnlock, cardReadyAt, buffOrder) are
+   the ACTIVE world's state. Two containers (OW / HL) hold each
+   dimension's progression; stashWorldState/activateWorldState
+   exchange them on travel. HELL.earned is the hell lifetime
+   (MAGMA COIN leaderboard); stats.earned stays the overworld
+   lifetime. curEarned() = the active world's earned. The saved
+   top-level fields are ALWAYS the overworld; hell is persisted
+   under save.hell; save.world persists the current dimension.
 
-   v3: POPUP TEXT pref — popTextOn gates the floating +N coin
-   pickup texts (player and worker pickups, checked in
-   05-entities.js). Saved in prefs, restored in load().
-
-   v2: lbData carries { uid, epoch, name, resetAt } — matching
-   save.js v4.1. load() reads ALL of them back. An onLateLoad
-   handler re-syncs the leaderboard identity if the IndexedDB
-   copy turns out to be newer than localStorage.
+   v4: world ('over'|'hell'), hell gate (HELL_UNLOCK derived).
+   v3: POPUP TEXT pref. v2: lbData { uid, epoch, name, resetAt }.
    ============================================================ */
 'use strict';
 
 /* build stamp: bump on every deploy; visible in the console */
-console.info('%cCFPX build: hell-dimension-v1','color:#a05ae0;font-weight:bold');
+console.info('%cCFPX build: hell-economy-v1','color:#a05ae0;font-weight:bold');
 
 /* ================= HELPERS ================= */
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -146,6 +141,34 @@ const HELL_UNLOCK=1000000;
 const hellGate={mode:'none',t:0,x:96,y:0};   /* mode: none|form|open */
 const nearHellGate=()=>hellGate.mode==='open'&&Math.abs((player.x+5)-hellGate.x)<32;
 
+/* ---- per-world progression containers ----
+   The live vars below are the ACTIVE world's state. OW/HL hold
+   each dimension's full progression (MAGMA COIN economy in hell:
+   all zeros until earned there). */
+const mkW=()=>({coins:0,workerOwned:false,cardUnlock:false,cardReadyAt:0,
+  buffOrder:[],
+  lv:{value:0,spawn:0,radius:0,gravity:0,luck:0,wspeed:0,cardcd:0},
+  buffs:{magnet:0,dbljump:0,speed2x:0,helper:0,coins2x:0,portal:0},
+  earned:0});
+const OW=mkW(), HL=mkW();
+
+function stashWorldState(){
+  const S=world==='hell'?HL:OW;
+  S.coins=coins;S.workerOwned=workerOwned;S.cardUnlock=cardUnlock;
+  S.cardReadyAt=cardReadyAt;S.buffOrder=buffOrder;
+  for(const k in lv)S.lv[k]=lv[k];
+  for(const k in buffs)S.buffs[k]=buffs[k];
+}
+function activateWorldState(){
+  const S=world==='hell'?HL:OW;
+  coins=S.coins;workerOwned=S.workerOwned;cardUnlock=S.cardUnlock;
+  cardReadyAt=S.cardReadyAt;buffOrder=S.buffOrder;
+  for(const k in lv)lv[k]=S.lv[k];
+  for(const k in buffs)buffs[k]=S.buffs[k];
+}
+/* active world's lifetime earned (leaderboard + HUD "coins earned") */
+function curEarned(){return world==='hell'?HL.earned:stats.earned;}
+
 const streakMult=c=>c>=8?5:c>=4?2:1;
 const coinMult=()=>Math.pow(2,buffs.coins2x);
 const playerSpd=()=>MOVE_SPD*(buffs.speed2x?2:1);
@@ -163,14 +186,9 @@ let buffOrder=[];
    +N coin pickup texts (player AND worker pickups) */
 let particlesOn=true, cloudsOn=true, animsOn=true, shakeOn=true, starsOn=true,
     popTextOn=true;
-/* lifetime stats (saved) — name is the online leaderboard identity */
+/* lifetime stats (saved) — earned is the OVERWORLD lifetime */
 const stats={playtime:0,earned:0,upgrades:0,started:false,tut:false,name:''};
-/* leaderboard client record (saved; managed by 13-online.js):
-   uid    — the player's server identity (leaderboard/<uid>)
-   epoch  — last lbMeta/epoch the client has seen (season reset)
-   name   — persistent mirror of stats.name (written at claim /
-            submit time; restored at boot by 13-online's recovery)
-   resetAt— cached lbMeta/resetAt (the current season's start time) */
+/* leaderboard client record (saved; managed by 13-online.js) */
 const lbData={uid:'',epoch:0,name:'',resetAt:0};
 const achUnlocked={};
 let shopOpen=false,setOpen=false,achOpen=false,appPaused=false;
@@ -194,26 +212,40 @@ let jumpQueued=false;
    NOTE on integer handling: epoch timestamps (cardReadyAt, lb.resetAt)
    and big counters (coins, stats.earned) can exceed 2^31. They must
    NEVER be coerced with |0 — that truncates to signed int32 and
-   wraps Date.now() (~1.7e12) NEGATIVE. save.js sanitize() already
-   guarantees valid integers, so values are taken as-is here. */
-function save(){ SaveData.write({
-  coins,
-  levels: lv,
-  workers: { bob: workerOwned },
-  cards: { unlocked: cardUnlock, readyAt: cardReadyAt, buffs, order: buffOrder },
-  audio: { sfx: sfxVol, music: musicVol },
-  prefs: { particles:particlesOn, clouds:cloudsOn, anims:animsOn,
-           shake:shakeOn, stars:starsOn, popText:popTextOn },
-  stats,
-  lb: lbData,
-  ach: { unlocked: achUnlocked }
-}); }
+   wraps Date.now() (~1.7e12) NEGATIVE. */
+function save(){
+  /* top-level fields are ALWAYS the overworld state */
+  const oc=world==='over';
+  SaveData.write({
+    coins:   oc?coins:OW.coins,
+    levels:  oc?lv:OW.lv,
+    workers: { bob: oc?workerOwned:OW.workerOwned },
+    cards: { unlocked: oc?cardUnlock:OW.cardUnlock,
+             readyAt:  oc?cardReadyAt:OW.cardReadyAt,
+             buffs:    oc?buffs:OW.buffs,
+             order:    oc?buffOrder:OW.buffOrder },
+    audio: { sfx: sfxVol, music: musicVol },
+    prefs: { particles:particlesOn, clouds:cloudsOn, anims:animsOn,
+             shake:shakeOn, stars:starsOn, popText:popTextOn },
+    stats,
+    lb: lbData,
+    ach: { unlocked: achUnlocked },
+    world,
+    hell: {
+      coins:       world==='hell'?coins:HL.coins,
+      earned:      HL.earned,
+      workerOwned: world==='hell'?workerOwned:HL.workerOwned,
+      cardUnlock:  world==='hell'?cardUnlock:HL.cardUnlock,
+      cardReadyAt: world==='hell'?cardReadyAt:HL.cardReadyAt,
+      levels:      world==='hell'?lv:HL.lv,
+      buffs:       world==='hell'?buffs:HL.buffs,
+      order:       world==='hell'?buffOrder:HL.buffOrder
+    }
+  });
+}
 
-/* shared load-body: applies a sanitized SaveData snapshot to the
-   live game objects. Used both at boot and by the onLateLoad
-   handler (IndexedDB-newer case). Only leaderboard-identity and
-   name fields are re-applied on late load — re-applying gameplay
-   state mid-session could clobber live progress. */
+/* shared load-body: re-syncs the leaderboard identity (boot +
+   IndexedDB late load). */
 function applyIdentity(s){
   const ST=(s&&s.stats)||{};
   stats.name=(typeof ST.name==='string')?ST.name.slice(0,12).toUpperCase():'';
@@ -226,6 +258,7 @@ function applyIdentity(s){
 
 function load(){
   const s=SaveData.load();
+  world=(s&&s.world==='hell')?'hell':'over';
   coins=(s&&typeof s.coins==='number')?s.coins:0;
   workerOwned=!!(s&&s.workers&&s.workers.bob);
   cardUnlock=!!(s&&s.cards&&s.cards.unlocked);
@@ -255,17 +288,32 @@ function load(){
   stats.upgrades=(typeof ST.upgrades==='number')?ST.upgrades|0:0;
   stats.started=!!ST.started;
   stats.tut=!!ST.tut;
-  /* full leaderboard identity (name/uid/epoch/resetAt) */
   applyIdentity(s);
   const ACu=(s&&s.ach&&s.ach.unlocked)||{};
   for(const k in ACu) if(ACu[k]) achUnlocked[k]=1;
+  /* the live vars just restored are the OVERWORLD state */
+  world='over';
+  stashWorldState();
+  /* hell container from the save */
+  const H=(s&&s.hell)||{};
+  HL.coins=(typeof H.coins==='number')?H.coins:0;
+  HL.earned=(typeof H.earned==='number')?H.earned:0;
+  HL.workerOwned=!!(H&&H.workerOwned);
+  HL.cardUnlock=!!(H&&H.cardUnlock);
+  HL.cardReadyAt=(H&&typeof H.cardReadyAt==='number')?H.cardReadyAt:0;
+  const HLv=(H&&H.levels)||{};
+  for(const k in HL.lv) if(typeof HLv[k]==='number')
+    HL.lv[k]=clamp(HLv[k],0,upgMax[k]||100);
+  const HBf=(H&&H.buffs)||{};
+  for(const k in HL.buffs) if(typeof HBf[k]==='number')
+    HL.buffs[k]=clamp(HBf[k]|0,0,9);
+  HL.buffOrder=Array.isArray(H&&H.order)
+    ? H.order.filter(id=>typeof HL.buffs[id]==='number') : [];
+  /* resume in the saved dimension */
+  if(s&&s.world==='hell'){world='hell';activateWorldState();}
 }
 
-/* late-load: save.js may discover a NEWER copy in IndexedDB after
-   boot (e.g. another tab flushed more recently). Re-sync the
-   leaderboard identity so stats.name / lbData.name stay consistent
-   with the newest save — the @NAME nametag reads these every frame.
-   Gameplay state is intentionally NOT re-applied mid-session. */
+/* late-load: re-sync the leaderboard identity only (nametag). */
 SaveData.onLateLoad(snap=>{
   try{ applyIdentity(snap); }catch(e){}
 });

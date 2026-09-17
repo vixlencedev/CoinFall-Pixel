@@ -422,3 +422,25 @@ function retroText(ctx,str,cx,y,sc,align=1,bands){
 const BANDS_GOLD =['#ffef9e','#f7c548','#d99a26'];
 const BANDS_RED  =['#ff9e6e','#e04a3a','#b7372c'];
 const BANDS_CREAM=['#ffffff','#fdf6e3','#d9cdb2'];
+/* ================= MAGMA COIN (hell currency) =================
+   The exact coin silhouette re-skinned in magma: dark crust
+   outline, orange body, white-hot highlight. Own frame set so
+   the spin animation works identically in hell. */
+const MAGPAL={O:'#3a1208',W:'#ffe9a8',Y:'#ff8c30',y:'#c23a10'};
+function magmaSprite(rows){const c=document.createElement('canvas');
+  c.width=rows[0].length;c.height=rows.length;const x=c.getContext('2d');
+  rows.forEach((row,ry)=>{for(let rx=0;rx<row.length;rx++){const ch=row[rx];
+    if(ch!=='.'){x.fillStyle=MAGPAL[ch];x.fillRect(rx,ry,1,1);}}});
+  return c;}
+const MAGMA_FRAMES={
+  8:magmaSprite([
+  "..OOOO..",".OWWYYO.","OWWYYYYO","OWYYYYyO","OYYYYyyO","OYyyyyyO",".OyyyyO.","..OOOO.."]),
+  6:magmaSprite([
+  "..OO..",".OWYO.","OWWYYy","OWYYYy","OYYyyy","OYyyyy",".OyyO.","..OO.."]),
+  4:magmaSprite([
+  ".OO.","OWYO","OWYy","OWYy","OYyy","OYyy","OyyO",".OO."]),
+  2:magmaSprite([
+  "..","OY","WY","WY","WY","Yy","Oy",".."]),
+};
+const magmaURL=MAGMA_FRAMES[8].toDataURL();
+const magmaFrame=cv=>MAGMA_FRAMES[2*clamp(Math.round(4.6*cv),1,4)];

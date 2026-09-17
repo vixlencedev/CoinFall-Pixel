@@ -2,22 +2,16 @@
    CoinFall Pixel — 09-render
    the full draw pipeline: sky, background layers, vegetation,
    shop, platforms, entities, overlays, HUD hints, and the
-   title / easter-egg screens. The loading screen itself lives
-   in 11-main (renderLoad) and is dispatched from here.
+   title / easter-egg screens.
 
-   v7.1: hell ambience — background lava-vein cascades drawn
-   behind the platforms, drifting smoke in the sky (replacing
-   clouds), plus the existing lava pools / gate / red veil.
-   v7: DIMENSIONS — hell branches: no clouds/birds/shop in hell,
-   animated lava pools + hell gate drawn, hell ambient red-dark
-   overlay with pulsing horizon glow.
-   v6.7: sizing pass — nametag uses the 5px tag font + 6x6 @;
-   BOB/HELPER names use the 3x4 mini font; their speed % uses
-   the 3x3 micro font.
+   v7.2: HELL ECONOMY — MAGMA COIN sprites in hell, hell-themed
+   obsidian shop stall, E prompt lowered beside the gate, shop
+   prompt works in both dimensions.
+   v7.1: hell ambience — bg lava cascades, drifting sky smoke.
    ============================================================ */
 'use strict';
 
-console.info('%cCFPX render: v7.1 (hell ambience)','color:#4fa8dd;font-weight:bold');
+console.info('%cCFPX render: v7.2 (hell economy)','color:#4fa8dd;font-weight:bold');
 
 let sx=0,sy=0;
 /* wind helper: horizontal sway for vegetation */
@@ -111,6 +105,37 @@ function drawShop(){
   g.fillStyle='#7a4a28';g.fillRect(x-14,G-10,10,1);g.fillRect(x-14,G-4,10,1);
   g.fillStyle='#c98d5a';g.fillRect(x-14,G-12,10,2);
 }
+/* hell shop stall: obsidian + magma, same footprint and look-at
+   behavior as the overworld shop */
+function drawHellShop(){
+  const x=SHOP_X,w=SHOP_W,G=GROUND_Y;
+  g.fillStyle='#1c1016';g.fillRect(x+5,G-10,4,10);g.fillRect(x+w-9,G-10,4,10);
+  g.fillStyle='#241826';g.fillRect(x+8,G-38,w-16,20);
+  g.fillStyle='#1a101c';g.fillRect(x+4,G-40,5,32);g.fillRect(x+w-9,G-40,5,32);
+  const kx=x+w/2-4,ky=G-36,blink=(time%3.4)>3.25;
+  g.fillStyle='#5c1408';g.fillRect(kx-2,ky+8,12,10);
+  g.fillStyle='#ff8c30';g.fillRect(kx,ky+3,8,5);
+  g.fillStyle='#7a1f0c';g.fillRect(kx-1,ky,10,3);
+  const dx=player.x+5-(kx+4), dy=player.y+7-(ky+6);
+  const lookX=dx>14?1:dx<-14?-1:0;
+  const lookY=dy<-6?-1:dy>8?1:0;
+  if(blink){g.fillStyle='#140705';g.fillRect(kx,ky+5,3,1);g.fillRect(kx+5,ky+5,3,1);}
+  else{
+    g.fillStyle='#ffe9a8';g.fillRect(kx,ky+4,3,3);g.fillRect(kx+5,ky+4,3,3);
+    g.fillStyle='#140705';
+    g.fillRect(kx+(lookX<0?0:lookX>0?2:1),ky+4+(lookY>0?1:0),1,2);
+    g.fillRect(kx+5+(lookX<0?0:lookX>0?2:1),ky+4+(lookY>0?1:0),1,2);}
+  g.fillStyle='#33160c';g.fillRect(x+2,G-21,w-4,2);
+  g.fillStyle='#241109';g.fillRect(x+2,G-19,w-4,11);
+  g.fillStyle='#140705';for(let px=x+10;px<x+w-4;px+=9)g.fillRect(px,G-18,1,9);
+  g.fillStyle='#e05a1e';g.fillRect(x-2,G-56,w+4,3);
+  for(let i=0;i<w;i+=6){g.fillStyle=(i/6)%2?'#3a1208':'#c23a10';g.fillRect(x+i,G-53,6,15);}
+  for(let i=0;i<w;i+=6)fillCircle(g,x+i+3,G-38,3,(i/6)%2?'#3a1208':'#ff8c30');
+  g.fillStyle='#1c0d08';g.fillRect(x+10,G-70,3,16);g.fillRect(x+w-13,G-70,3,16);
+  g.fillStyle='#241109';g.fillRect(x+4,G-82,w-8,14);
+  g.fillStyle='#140705';g.fillRect(x+6,G-80,w-12,10);
+  drawText('SHOP',x+w/2,G-78,'#ff8c30',1,1,false);
+}
 function drawWorkerSprite(w,frames){
   if(!w.grounded){
     const ly=groundBelow(w.x+5,w.y+w.h);
@@ -167,7 +192,7 @@ function render(){
   g.drawImage(worldC,sx,sy);
   drawPlatforms();
   drawVeg();
-  if(world==='over')drawShop();
+  if(world==='over')drawShop(); else drawHellShop();
   drawPortal();
   drawLava();
   drawHellGate();
@@ -182,9 +207,10 @@ function render(){
       const blink=c.portalC?3.5:REST_BLINK;
       if(c.restT>blink&&Math.floor(c.restT*8)%2===0)continue;
     }
-    /* ANIMATIONS off: coins show their full face, frozen */
+    /* ANIMATIONS off: coins show their full face, frozen.
+       MAGMA COIN sprite in hell. */
     const spin=animsOn?c.spin+(c.state==='fall'?time*6:c.restT*2):0;
-    const fr=coinFrame(Math.abs(Math.cos(spin)));
+    const fr=(world==='hell'?magmaFrame:coinFrame)(Math.abs(Math.cos(spin)));
     g.drawImage(fr,Math.round(c.x+4-fr.width/2+sx),Math.round(c.y+sy));
   }
   if(workerOwned){
@@ -214,12 +240,11 @@ function render(){
   g.drawImage(fr,-6,-17);
   g.restore();
 
-  /* @NAME nametag: 6x6 outlined @ + 5px single-stroke tag font
-     with a 1px dark outline — centered above the hero, tracks
-     the idle bob. Works in BOTH dimensions. */
+  /* @NAME nametag: 6x6 outlined @ + 5px tag font, outlined —
+     centered above the hero, both dimensions. */
   if(stats.name){
     const tag=String(stats.name);
-    const wTot=8+1+tagW(tag);   /* 8 = outlined @ sprite width */
+    const wTot=8+1+tagW(tag);
     const tx=Math.round(player.x+5-wTot/2+sx);
     const ty=Math.round(player.y+player.h-26+sy-bob);
     g.drawImage(AT_TAG,tx,ty);
@@ -249,34 +274,26 @@ function render(){
     g.fillStyle='rgba(10,6,20,0.50)';g.fillRect(0,0,VW,VH);
     const lb=Math.round(Math.sin(time*2)*1);
     if(!egg.on){
-      /* compact retro title, top-middle (no chromatic effect here —
-         that is exclusive to the easter-egg screen) */
       retroText(g,'COINFALL',VW/2,15+lb,2,1,BANDS_GOLD);
       retroText(g,'PIXEL',VW/2,33+lb,2,1,BANDS_CREAM);
       drawMenuCoins();
       if(Math.floor(time*1.4)%2===0)
         drawText('PRESS TO PLAY',VW/2,106,'#fdf6e3',2,1);
     }else{
-      /* easter-egg stage */
       drawEggPlats();
       drawMenuCoins();
       drawEggHero();
       const wob=Math.sin(time*7)*2;
-      /* chromatic ghosts: red + teal wobbling behind the retro base */
       blitText(g,'COINFALL',VW/2-Math.round(2+wob),15+lb,'#e04a3a',2,1,false);
       blitText(g,'COINFALL',VW/2+Math.round(2+wob),15+lb,'#2fa8a0',2,1,false);
       retroText(g,'COINFALL',VW/2,15+lb,2,1,BANDS_GOLD);
       blitText(g,'PIXEL',VW/2-Math.round(2-wob),33+lb,'#e04a3a',2,1,false);
       blitText(g,'PIXEL',VW/2+Math.round(2-wob),33+lb,'#2fa8a0',2,1,false);
       retroText(g,'PIXEL',VW/2,33+lb,2,1,BANDS_CREAM);
-      /* PRESS TO PLAY: falls DOWN off the bottom of the frame under
-         gravity and stays gone — leaving only the title, platforms,
-         coins and hero for a clean demo stage */
       const py=106+450*egg.t*egg.t;
       if(py<VH+20)
         drawText('PRESS TO PLAY',VW/2,Math.round(py),'#fdf6e3',2,1);
     }
-    /* pickup bursts + floating +1s on top of the menu scene */
     for(const p of parts){const a=1-p.t/p.life;g.globalAlpha=a;
       if(p.star){g.fillStyle=p.col;g.fillRect(Math.round(p.x-1),Math.round(p.y),3,1);
         g.fillRect(Math.round(p.x),Math.round(p.y-1),1,3);}
@@ -288,15 +305,14 @@ function render(){
     return;
   }
   if(cardOpen){drawCards();return;}
-  if(world==='over'&&!shopOpen&&!setOpen&&!achOpen&&nearShop())
+  if(!shopOpen&&!setOpen&&!achOpen&&nearShop())
     drawText(isTouch?'TAP E : OPEN SHOP':'PRESS E : OPEN SHOP',
-      SHOP_CX,GROUND_Y-96+Math.sin(time*4)*2,'#f7c548',1,1);
-  /* hell gate: only the letter E bobs above the portal */
+      SHOP_CX,GROUND_Y-96+Math.sin(time*4)*2,
+      world==='hell'?'#ff8c30':'#f7c548',1,1);
+  /* hell gate: the letter E, low — right above the vortex */
   if(nearHellGate()&&!cardOpen&&!shopOpen&&!setOpen&&!achOpen)
-    drawText('E',hellGate.x,GROUND_Y-52+Math.sin(time*4)*2,
+    drawText('E',hellGate.x,GROUND_Y-38+Math.sin(time*4)*2,
       world==='hell'?'#8fe8f8':'#ff8c30',1,1);
-  /* tutorial shows only until the player has done all three steps
-     (persisted in stats.tut — veterans never see it again) */
   if(!stats.tut){
     const cx2=Math.round(VW/2);
     if(!player.moved)

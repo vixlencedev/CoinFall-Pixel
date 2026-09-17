@@ -4,17 +4,10 @@
    - js/13-online.js installs window.LB_PROVIDER {fetch,submit,
      claimName,probeSelf} backed by Firebase when configured.
    - Without a provider it runs in OFFLINE mode (local entry only).
-   NAMING: one-time per season. Seasons are server-authoritative:
-   fetch()/probeSelf() run lbCheckSeason() first, and 'NEEDS NAME'
-   from a detected reset routes the player back to the name view
-   even mid-fetch. Reserved names (lbReserved/ on the server)
-   cannot be claimed.
-
-   v6.3: the claimed name is mirrored into lbData.name (the
-   persistent record that provably round-trips) so boot recovery
-   in 13-online can restore stats.name even if the save schema
-   drops stats.name itself. Keeps the @NAME nametag alive across
-   reloads for already-named players.
+   v5: HELL ECONOMY — the board shows the ACTIVE dimension's
+   currency (MAGMA COIN icons in hell) and the active world's
+   lifetime earned; 13-online routes fetch/submit to the
+   hellboard node while in hell.
    ============================================================ */
 'use strict';
 
@@ -75,8 +68,7 @@ const lbRowsEl=document.getElementById('lbRows');
 const lbMeEl=document.getElementById('lbMe');
 const lbSubEl=document.getElementById('lbSub');
 
-/* #lbNameErr is missing from the deployed index.html (v6.2).
-   Look it up lazily and never crash on it. */
+/* #lbNameErr is looked up lazily and never crashes on absence */
 function lbErrEl(){return document.getElementById('lbNameErr');}
 function lbErrClear(){
   const el=lbErrEl();
@@ -98,8 +90,6 @@ function lbShowName(show){
   lbView=show?'name':'list';
   lbNameView.style.display=show?'flex':'none';
   lbListView.style.display=show?'none':'flex';
-  /* reset the header so CHECKING.../LOADING... never lingers on
-     the name view */
   if(show)lbSubEl.textContent='JOIN';
 }
 
@@ -137,7 +127,7 @@ function lbRow(e,rank){
     rankHtml=`<span class="lbRank">#${rank}</span>`;
   row.innerHTML=rankHtml+
     `<span class="lbName">${e.n}${e.you?'<span class="lbYou">YOU</span>':''}</span>`+
-    `<span class="lbScore"><img src="${coinURL}" alt="">${group(e.s)}</span>`;
+    `<span class="lbScore"><img src="${curCoinURL()}" alt="">${group(e.s)}</span>`;
   return row;
 }
 function lbBuildRows(list){
@@ -178,7 +168,7 @@ function lbRenderMe(){
   lbMeEl.innerHTML=
     `<span class="lbr">#${my>0?my:'-'}</span>`+
     `<span class="lbn">${stats.name}</span>`+
-    `<span class="lbs"><img src="${coinURL}" alt="">${group(stats.earned)}</span>`;
+    `<span class="lbs"><img src="${curCoinURL()}" alt="">${group(curEarned())}</span>`;
 }
 function lbFetchBoard(token){
   if(window.LB_PROVIDER){
@@ -195,8 +185,6 @@ function lbFetchBoard(token){
       lbBuildRows(list);
     }).catch(e=>{
       if(token!==lbRenderToken||lbView!=='list')return;
-      /* a detected season reset routes back to the name view
-         (lbShowName also resets the header and clears the error) */
       if(e&&e.message==='NEEDS NAME'){
         console.info('[CF] name: fetch reports NEEDS NAME — showing name view');
         lbShowName(true);
@@ -205,7 +193,7 @@ function lbFetchBoard(token){
         return;
       }
       lbSubEl.textContent='OFFLINE';
-      const list=lbCache||[{n:stats.name,s:stats.earned,you:true}];
+      const list=lbCache||[{n:stats.name,s:curEarned(),you:true}];
       lbLastList=list;
       lbRenderMe();
       lbBuildRows(list);
@@ -215,7 +203,7 @@ function lbFetchBoard(token){
     });
   }else{
     lbSubEl.textContent='OFFLINE';
-    const list=[{n:stats.name,s:stats.earned,you:true}];
+    const list=[{n:stats.name,s:curEarned(),you:true}];
     lbLastList=list;
     lbRenderMe();
     lbBuildRows(list);
@@ -241,7 +229,7 @@ async function renderLb(){
       }
     }catch(e){
       if(token!==lbRenderToken)return;
-      lbShowName(true);   /* resets header to JOIN */
+      lbShowName(true);
       if(!(e&&e.message==='NEEDS NAME'))
         lbNameFail('COULD NOT REACH SERVER - TRY AGAIN');
       return;
@@ -255,8 +243,8 @@ async function renderLb(){
 }
 
 /* ---- name submission ---- */
-const LB_SUBMIT_TIMEOUT=12000;  /* overall cap on the whole claim */
-let lbSubmitting=false;         /* re-entrancy guard */
+const LB_SUBMIT_TIMEOUT=12000;
+let lbSubmitting=false;
 
 function lbClaimError(m){
   m=m||'';
@@ -266,7 +254,6 @@ function lbClaimError(m){
     return 'NAME BLOCKED BY SERVER ('+m.slice(0,32)+')';
   if(m.toUpperCase().indexOf('VALIDATE')>=0)
     return 'NAME REJECTED BY SERVER ('+m.slice(0,32)+')';
-  /* temporary: include the raw code so failures are identifiable */
   return 'COULD NOT REACH SERVER - TRY AGAIN ('+m.slice(0,32)+')';
 }
 async function lbSubmitName(){
@@ -292,27 +279,21 @@ async function lbSubmitName(){
       }catch(e){
         console.warn('[CF] name: claim REJECTED:',e&&e.message||e);
         lbNameFail(lbClaimError(e&&e.message||String(e)));
-        return;   /* finally{} restores the button */
+        return;
       }
     }
     lbErrClear();
     stats.name=raw;
-    /* mirror into the persistent record: lbData round-trips (the
-       uid lives there) even if the save schema drops stats.name */
     try{
       if(typeof lbData!=='undefined'&&lbData)lbData.name=raw;
     }catch(e){}
     try{save();}catch(e){}
-    /* NOTE: claimName already wrote leaderboard/<uid> with the
-       current score — no submit() call here, it would duplicate. */
     console.info('[CF] name: claim OK, switching to board view');
   }finally{
     lbSubmitting=false;
     lbNameOk.disabled=false;
     lbNameOk.textContent='JOIN';
   }
-  /* success tail — each step guarded so nothing can abort the
-     redirect to the leaderboard list */
   lbShowName(false);
   try{sfx.buy();}catch(e){console.warn('[CF] name: sfx.buy failed',e);}
   try{lbRenderMe();}catch(e){console.warn('[CF] name: renderMe failed',e);}
@@ -331,7 +312,7 @@ lbNameInput.addEventListener('input',()=>{
   lbNameInput.value=lbNameInput.value.toUpperCase()
     .replace(/[^A-Z0-9 _\-]/g,'').slice(0,12);
   try{lbNameInput.setSelectionRange(p,p);}catch(_){}
-  lbErrClear();   /* null-safe: no more TypeError on #lbNameErr */
+  lbErrClear();
 });
 lbNameInput.addEventListener('keydown',e=>{
   if(e.key==='Enter'){e.preventDefault();lbSubmitName();}

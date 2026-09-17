@@ -2,15 +2,13 @@
    CoinFall Pixel — 10-ui
    all DOM wiring: HUD refresh, card button, settings, the
    achievements list, the shop sidebar, save import/export,
-   and touch control bindings. Menus are mutually exclusive
-   via the 01-core registry.
+   and touch control bindings.
 
-   v3: touch E button now also triggers the hell gate when
-   standing near it (dimension travel).
-   v2: POPUP TEXT toggle (tglPopText) — gates the floating
-   +N coin pickup texts (player AND worker pickups). Also
-   restores popTextOn in applySaveState so imports and
-   IndexedDB late-load keep the setting.
+   v4: HELL ECONOMY — syncWorldUI() swaps the coin icons / HUD
+   theme per dimension; shop prices show the active currency's
+   coin; applySaveState restores the hell record and resumes the
+   saved dimension; touch E opens the shop in both worlds.
+   v3: touch E triggers the hell gate. v2: POPUP TEXT toggle.
    ============================================================ */
 'use strict';
 
@@ -41,12 +39,20 @@ const achPopName=document.getElementById('achPopName');
 const achOverlay=document.getElementById('achOverlay');
 const achCountEl=document.getElementById('achCount');
 const achListEl=document.getElementById('achList');
-document.getElementById('coinIcon').src=coinURL;
-document.getElementById('balIcon').src=coinURL;
-document.getElementById('cardBtnImg').src=cardBtnURL;
 /* settings-panel icon buttons (medal = achievements, trophy = board) */
 document.getElementById('achBtnImg').src=achBtnURL;
 document.getElementById('lbBtnImg').src=lbBtnURL;
+
+/* ================= WORLD-UI SYNC (MAGMA COIN) ================= */
+const curCoinURL=()=>world==='hell'?magmaURL:coinURL;
+function syncWorldUI(){
+  const hell=world==='hell';
+  stage.classList.toggle('hell',hell);
+  document.getElementById('coinIcon').src=curCoinURL();
+  document.getElementById('balIcon').src=curCoinURL();
+  refreshHUD();updateCardBtn();
+}
+syncWorldUI();
 
 /* ================= HUD ================= */
 function refreshHUD(){
@@ -128,7 +134,7 @@ TOGGLES.forEach(t=>{
   b.addEventListener('click',()=>{t.set(!t.get());sync();save();sfx.tick();b.blur();});});
 function refreshStats(){
   stPlay.textContent=fmtTime(stats.playtime);
-  stEarn.textContent=group(stats.earned);
+  stEarn.textContent=group(curEarned());
   stProg.textContent=overallProgress().toFixed(2)+'%';
   stMult.textContent='X'+coinMult();}
 function setSettings(o){
@@ -253,6 +259,7 @@ function bundle(u){
   return{n,total,cant:coins<total};
 }
 function refreshShop(){
+  const cURL=curCoinURL();
   UPG.forEach((u,i)=>{const r=rowRefs[i];
     if(u.needsWorker&&!workerOwned){r.row.style.display='none';return;}
     if(u.needsCardUnlock&&!cardUnlock){r.row.style.display='none';return;}
@@ -263,7 +270,7 @@ function refreshShop(){
       r.sub.textContent=workerOwned?'ON THE CLOCK - COLLECTING COINS'
                                    :'BOB COLLECTS COINS FOR YOU';
       if(workerOwned){r.btn.textContent='OWNED';r.btn.className='buy own';}
-      else{r.btn.innerHTML=`<img src="${coinURL}" alt="">${fmt(WORKER_COST)}`;
+      else{r.btn.innerHTML=`<img src="${cURL}" alt="">${fmt(WORKER_COST)}`;
         r.btn.className='buy'+(coins<WORKER_COST?' cant':'');}
       return;}
     if(u.id==='cardunlock'){
@@ -272,7 +279,7 @@ function refreshShop(){
       r.sub.textContent=cardUnlock?'TAP THE CARD ICON TO PICK A BUFF'
                                   :'UNLOCK PICKABLE BUFF CARDS';
       if(cardUnlock){r.btn.textContent='OWNED';r.btn.className='buy own';}
-      else{r.btn.innerHTML=`<img src="${coinURL}" alt="">${fmt(CARD_UNLOCK_COST)}`;
+      else{r.btn.innerHTML=`<img src="${cURL}" alt="">${fmt(CARD_UNLOCK_COST)}`;
         r.btn.className='buy'+(coins<CARD_UNLOCK_COST?' cant':'');}
       return;}
     const L=lv[u.id],b=bundle(u);
@@ -280,7 +287,7 @@ function refreshShop(){
     r.lvl.classList.toggle('mx',!b);
     r.sub.textContent=u.txt(L);
     if(!b){r.btn.textContent='MAX';r.btn.className='buy max';}
-    else{r.btn.innerHTML=`<img src="${coinURL}" alt="">${fmt(b.total)}`;
+    else{r.btn.innerHTML=`<img src="${cURL}" alt="">${fmt(b.total)}`;
       r.btn.className='buy'+(b.cant?' cant':'');}});
   balNum.textContent=fmt(coins);
 }
@@ -333,8 +340,12 @@ function setShop(o){
 document.getElementById('shopClose').addEventListener('click',()=>{setShop(false);});
 
 /* ================= SAVE STATE APPLICATION =================
-   shared by import codes + IndexedDB late-load recovery */
+   shared by import codes + IndexedDB late-load recovery.
+   The snapshot's top-level fields are ALWAYS the overworld;
+   hell is restored from the hell record, then the saved
+   dimension is resumed. */
 function applySaveState(s){
+  world='over';
   coins=(s&&typeof s.coins==='number')?s.coins:0;
   workerOwned=!!(s&&s.workers&&s.workers.bob);
   cardUnlock=!!(s&&s.cards&&s.cards.unlocked);
@@ -368,13 +379,36 @@ function applySaveState(s){
   if(!stats.tut&&stats.earned>0)stats.tut=true;
   const LBD=(s&&s.lb)||{};
   lbData.uid=(typeof LBD.uid==='string')?LBD.uid.slice(0,24):'';
+  lbData.epoch=(typeof LBD.epoch==='number')?LBD.epoch:0;
+  lbData.name=(typeof LBD.name==='string')?LBD.name.slice(0,12).toUpperCase():'';
+  lbData.resetAt=(typeof LBD.resetAt==='number')?LBD.resetAt:0;
   const ACu=(s&&s.ach&&s.ach.unlocked)||{};
   for(const k in ACu) if(ACu[k]) achUnlocked[k]=1;
+  /* stash the restored overworld state into its container */
+  stashWorldState();
+  /* hell record */
+  const H=(s&&s.hell)||{};
+  HL.coins=(typeof H.coins==='number')?H.coins:0;
+  HL.earned=(typeof H.earned==='number')?H.earned:0;
+  HL.workerOwned=!!(H&&H.workerOwned);
+  HL.cardUnlock=!!(H&&H.cardUnlock);
+  HL.cardReadyAt=(H&&typeof H.cardReadyAt==='number')?H.cardReadyAt:0;
+  const HLv=(H&&H.levels)||{};
+  for(const k in HL.lv) if(typeof HLv[k]==='number')
+    HL.lv[k]=clamp(HLv[k],0,upgMax[k]||100);
+  const HBf=(H&&H.buffs)||{};
+  for(const k in HL.buffs) if(typeof HBf[k]==='number')
+    HL.buffs[k]=clamp(HBf[k]|0,0,9);
+  HL.buffOrder=Array.isArray(H&&H.order)
+    ? H.order.filter(id=>typeof HL.buffs[id]==='number') : [];
+  /* resume in the saved dimension */
+  if(s&&s.world==='hell'){world='hell';activateWorldState();}
   if(buffs.helper&&!helper)spawnHelper();
   if(!buffs.helper)helper=null;
   syncSliders();
   TOGGLES.forEach(t=>{const b=document.getElementById(t.id);
     const v=t.get();b.textContent=v?'ON':'OFF';b.classList.toggle('on',v);});
+  syncWorldUI();
   refreshBuffs();updateCardBtn();
   refreshHUD();refreshShop();refreshStats();refreshAch();
 }
@@ -409,8 +443,19 @@ resetBtn.addEventListener('click',()=>{
     stats.playtime=0;stats.earned=0;stats.upgrades=0;stats.started=false;
     stats.tut=false;stats.name='';
     lbData.uid='';
+    /* wipe BOTH dimensions */
+    OW.coins=0;OW.earned=0;OW.workerOwned=false;OW.cardUnlock=false;OW.cardReadyAt=0;
+    OW.buffOrder=[];
+    for(const k in OW.lv)OW.lv[k]=0;
+    for(const k in OW.buffs)OW.buffs[k]=0;
+    HL.coins=0;HL.earned=0;HL.workerOwned=false;HL.cardUnlock=false;HL.cardReadyAt=0;
+    HL.buffOrder=[];
+    for(const k in HL.lv)HL.lv[k]=0;
+    for(const k in HL.buffs)HL.buffs[k]=0;
     for(const k in achUnlocked)delete achUnlocked[k];
-    updateCardBtn();refreshStats();refreshAch();
+    if(world==='hell'){world='over';traveling||0;applyDimension();}
+    hellGate.mode='none';
+    syncWorldUI();updateCardBtn();refreshStats();refreshAch();
     refreshHUD();refreshShop();save();
     resetBtn.textContent='RESET SAVE';resetArm=0;sfx.close();
   }else{resetArm=Date.now()+2500;resetBtn.textContent='SURE?';sfx.deny();
@@ -441,7 +486,7 @@ bindHold(document.getElementById('tDown'),()=>tryDrop(),null);
 bindHold(tE,()=>{
   if(!started)return;
   if(shopOpen)setShop(false);
-  else if(world==='over'&&nearShop())setShop(true);
+  else if(nearShop())setShop(true);
   else if(nearHellGate())travelTo(world==='over'?'hell':'over');
 },null);
 addEventListener('contextmenu',e=>{

@@ -96,3 +96,7 @@
   text-shadow:1px 1px 0 rgba(255,255,255,.6);margin-bottom:4px}
 #achPop .apn{font-size:max(8px,calc(var(--us)*3.5px));color:#12403b;
   text-shadow:1px 1px 0 rgba(255,255,255,.6);line-height:1.4}
+  /* ---------- HELL dimension: MAGMA COIN theme ---------- */
+#stage.hell #coinCount{color:#ff8c30;
+  text-shadow:calc(var(--s)*1px) calc(var(--s)*1px) 0 rgba(30,6,2,.6)}
+#stage.hell #coinRate{color:#ffcfa0}
