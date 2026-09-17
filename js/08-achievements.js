@@ -200,16 +200,16 @@ const ACH=[
   get:()=>achUnlocked.hellgate?1:0},
  {id:'devil',    name:'DEVIL',                icon:18, goal:1, desc:'DEVILS ADVOCATE',
   get:()=>HL.workerOwned?1:0},
- {id:'hk10',     name:'RICHES FROM THE DEPTHS',icon:19, goal:1e4, desc:'EARN 10K MAGMA COINS',
+ {id:'hk10',     name:'WARMING UP',icon:19, goal:1e4, desc:'EARN 10,000 MAGMA COINS',
   get:()=>HL.earned},
- {id:'hk100',    name:'DEPTHS VIP',           icon:20, goal:1e5, desc:'EARN 100K MAGMA COINS',
+ {id:'hk100',    name:'CAPITALIZE HELL',           icon:20, goal:1e5, desc:'EARN 100,000 MAGMA COINS',
   get:()=>HL.earned},
- {id:'hk500',    name:'DEPTHS MOGUL',         icon:21, goal:5e5, desc:'EARN 500K MAGMA COINS',
+ {id:'hk500',    name:'UNDERSTAND THE DEPTHS',         icon:21, goal:5e5, desc:'EARN 500,000 MAGMA COINS',
   get:()=>HL.earned},
- {id:'hm1',      name:'DEPTHS OWNER',         icon:22, goal:1e6, desc:'EARN 1,000,000 MAGMA COINS',
+ {id:'hm1',      name:'OWN THE DEPTHS',         icon:22, goal:1e6, desc:'EARN 1,000,000 MAGMA COINS',
   get:()=>HL.earned},
  {id:'hmaster',  name:'MASTERED THE DEPTHS',  icon:23, goal:1,
-  desc:'REACH MAX LEVEL FOR EVERY UPGRADE IN THE HELL SHOP',
+  desc:'MAX OUT EVERY UPGRADE IN THE HELL SHOP',
   get:()=>{
     for(const u of UPG_HELL)
       if(u.max&&(HL.lv[u.id]||0)<u.max)return 0;
