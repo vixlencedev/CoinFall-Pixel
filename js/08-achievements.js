@@ -192,7 +192,7 @@ const ACH=[
   get:()=>OW.workerOwned?1:0},
  {id:'pow',   name:'SUPER POWERS',           icon:14, goal:1,     desc:'UNLOCK POWER-UP CARDS',
   get:()=>cardUnlock?1:0},
- {id:'max',   name:'MAXIMUM EFFICIENCY',     icon:15, goal:1,     desc:'MAX OUT EVERY UPGRADE',
+ {id:'max',   name:'MAXIMUM EFFICIENCY',     icon:15, goal:1,     desc:'MAX OUT EVERY UPGRADE IN THE SHOP',
   get:()=>(lv.value>=1000&&lv.spawn>=100&&lv.radius>=100&&lv.gravity>=100&&
            lv.luck>=100&&lv.wspeed>=100&&lv.cardcd>=100)?1:0},
  /* ---- HELL DIMENSION SET ---- */
@@ -208,11 +208,14 @@ const ACH=[
   get:()=>HL.earned},
  {id:'hm1',      name:'OWN THE DEPTHS',         icon:22, goal:1e6, desc:'EARN 1,000,000 MAGMA COINS',
   get:()=>HL.earned},
- {id:'hmaster',  name:'MASTERED THE DEPTHS',  icon:23, goal:1,
+  {id:'hmaster',  name:'MASTERED THE DEPTHS',  icon:23, goal:1,
   desc:'MAX OUT EVERY UPGRADE IN THE HELL SHOP',
   get:()=>{
+    /* read the LIVE hell levels while in hell (purchases update
+       lv directly; HL.lv only syncs on travel/save) */
+    const L=world==='hell'?lv:HL.lv;
     for(const u of UPG_HELL)
-      if(u.max&&(HL.lv[u.id]||0)<u.max)return 0;
+      if(u.max&&(L[u.id]||0)<u.max)return 0;
     return 1;}},
  {id:'egg',   icon:16, goal:1, mystery:true,
   get:()=>achUnlocked.egg?1:0,
