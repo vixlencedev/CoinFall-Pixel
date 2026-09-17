@@ -2,21 +2,16 @@
    CoinFall Pixel — 02-assets
    every pixel sprite, coin frames, shop icons, the 3x5 bitmap
    font, buff icons, the power-up card face, the retro arcade
-   logotype renderer, and the settings-panel icon buttons.
+   logotype renderer, the settings-panel icon buttons, the
+   tag/mini/micro fonts, and the MAGMA COIN.
 
-   v6.7: SIZING PASS.
-   - TAG font (nametag) shrunk 6px -> 5px tall, single-stroke
-     glyphs; the 1px outline now reads much lighter. @ sprite
-     shrunk to 6px. Same reference-style outline treatment.
-   - MINI 3x4 font (from v6.5) now used for the BOB/HELPER name
-     labels (smaller than the main 3x5 font they used before).
-   - NEW MICRO 3x3 font for the speed % — one step smaller than
-     the worker names.
-   The 3x5 GLYPHS font is untouched for all other drawText users.
+   v6.8: DEVIL worker sprite (horns, dark red) + 5 hell shop
+   icons (overheated coin, magma value, dissipation, devil,
+   hellfire fireball).
    ============================================================ */
 'use strict';
 
-console.info('%cCFPX assets: v6.7 (sizing pass)','color:#4fa8dd;font-weight:bold');
+console.info('%cCFPX assets: v6.8 (devil + hell icons)','color:#4fa8dd;font-weight:bold');
 
 /* --- hero 12x17 --- */
 const HEAD=[
@@ -101,6 +96,29 @@ const FR_H={
   air:makeSprite([...HEAD_H,...TORSO_W,...LEGS_AIR]),
 };
 
+/* --- DEVIL 12x17 (gold horns, dark red) — hell's worker --- */
+const HEAD_D=[
+".O........O.",
+".OY......YO.",
+"..OYOOOOYO..",
+".ORRRRRRRRO.",
+".OSSSSSSSSO.",
+".OSWESWESSO.",
+".OSSSSSSssO.",
+".OSSSSEEssO."];
+const TORSO_D=[
+".OrrrrrrrrO.",
+".OPPrrrrPPO.",
+".OPPrYYrPPO.",
+".OSrrrrrrSO.",
+".OPPPYYPPPO."];
+const FR_D={
+  idle:makeSprite([...HEAD_D,...TORSO_D,...LEGS_IDLE]),
+  w1:makeSprite([...HEAD_D,...TORSO_D,...LEGS_W1]),
+  w2:makeSprite([...HEAD_D,...TORSO_D,...LEGS_W2]),
+  air:makeSprite([...HEAD_D,...TORSO_D,...LEGS_AIR]),
+};
+
 const COIN_FRAMES={
   8:makeSprite([
   "..OOOO..",".OWWYYO.","OWWYYYYO","OWYYYYyO","OYYYYyyO","OYyyyyyO",".OyyyyO.","..OOOO.."]),
@@ -114,7 +132,7 @@ const COIN_FRAMES={
 const coinURL=COIN_FRAMES[8].toDataURL();
 const coinFrame=cv=>COIN_FRAMES[2*clamp(Math.round(4.6*cv),1,4)];
 
-/* shop icons 0..8 */
+/* shop icons 0..8 (overworld) */
 const ICON_DEFS=[
 ["..OOOO..",".OGGGGO.","OGGWWGYO","OGWWWWYO","OGGWWGYO","OYYYYYYO",".OYYYYO.","..OOOO.."],
 ["..OOOO..",".OWWWWO.","OWWTWWWO","OWWTTTWO","OWWTWWWO","OWWWWWWO",".OWWWWO.","..OOOO.."],
@@ -191,11 +209,7 @@ function blitTextMini(ctx,str,x,y,col,align=0,shadow=true){
         if(gl[r][c]==='1')ctx.fillRect(ox+i*4+c,oy+r,1,1);}}
 }
 
-/* ================= MICRO 3x3 FONT (speed % only) =================
-   One step smaller than the mini font. Only digits + '%' are
-   needed for the worker percentage readout. At 3x3 a few digits
-   are necessarily condensed (8 is a solid blob, 6/0 differ by
-   one pixel) — acceptable at this label size. */
+/* ================= MICRO 3x3 FONT (speed % only) ================= */
 const MICRO_GLYPHS={
 "0":["111","101","111"],"1":["010","110","010"],"2":["111","001","111"],
 "3":["111","010","111"],"4":["101","111","001"],"5":["111","100","111"],
@@ -215,10 +229,7 @@ function blitTextMicro(ctx,str,x,y,col,align=0,shadow=true){
         if(gl[r][c]==='1')ctx.fillRect(ox+i*4+c,oy+r,1,1);}}
 }
 
-/* ================= TAG FONT (nametag only, v6.7) =================
-   5px tall, variable widths, single-stroke — one size down from
-   v6.6 so the 1px solid outline reads light instead of bulky.
-   Same outline treatment (1px dark on all 8 sides + colored face). */
+/* ================= TAG FONT (nametag only) ================= */
 const TAG_GLYPHS={
 A:[".#.","#.#","###","#.#","#.#"],
 B:["##.","#.#","##.","#.#","##."],
@@ -289,8 +300,7 @@ function blitTextTag(ctx,str,x,y,face,outline,align=0){
   tagStamp(ctx,str,x,y);
 }
 
-/* ---- @ sprite for the tag: 6x6 spiral (one size down from
-   v6.6's 7x6), outlined, tail curl preserved ---- */
+/* ---- @ sprite for the tag: 6x6 spiral ---- */
 const TAG_AT=[
 ".####.",
 "#....#",
@@ -339,9 +349,7 @@ BUFF_MAPS.forEach((m,i)=>{
   buffIconURL[i]=cv.toDataURL();
 });
 
-/* mini power-up card face — sky-blue frame, cream face, gold star,
-   teal ribbon. Used by the HUD card button AND the SUPER POWERS
-   achievement icon. */
+/* mini power-up card face */
 const CARD_FACE=[
 ".CCCCCCCCCC.",
 ".CWWWWWWWWC.",
@@ -392,6 +400,37 @@ const LB_BTN_ICON=[
 const achBtnURL=makeSprite(ACH_BTN_ICON).toDataURL();
 const lbBtnURL=makeSprite(LB_BTN_ICON).toDataURL();
 
+/* ================= MAGMA COIN (hell currency) ================= */
+const MAGPAL={O:'#3a1208',W:'#ffe9a8',Y:'#ff8c30',y:'#c23a10'};
+function magmaSprite(rows){const c=document.createElement('canvas');
+  c.width=rows[0].length;c.height=rows.length;const x=c.getContext('2d');
+  rows.forEach((row,ry)=>{for(let rx=0;rx<row.length;rx++){const ch=row[rx];
+    if(ch!=='.'){x.fillStyle=MAGPAL[ch];x.fillRect(rx,ry,1,1);}}});
+  return c;}
+const MAGMA_FRAMES={
+  8:magmaSprite([
+  "..OOOO..",".OWWYYO.","OWWYYYYO","OWYYYYyO","OYYYYyyO","OYyyyyyO",".OyyyyO.","..OOOO.."]),
+  6:magmaSprite([
+  "..OO..",".OWYO.","OWWYYy","OWYYYy","OYYyyy","OYyyyy",".OyyO.","..OO.."]),
+  4:magmaSprite([
+  ".OO.","OWYO","OWYy","OWYy","OYyy","OYyy","OyyO",".OO."]),
+  2:magmaSprite([
+  "..","OY","WY","WY","WY","Yy","Oy",".."]),
+};
+const magmaURL=MAGMA_FRAMES[8].toDataURL();
+const magmaFrame=cv=>MAGMA_FRAMES[2*clamp(Math.round(4.6*cv),1,4)];
+
+/* ================= HELL SHOP ICONS =================
+   0 overheated coin, 1 magma value (+), 2 dissipation, 3 devil,
+   4 hellfire fireball. Assigned to UPG_HELL by 01-core. */
+const HELL_ICON_DEFS=[
+["...RY...","..RYR...",".OWWYO..","OWWYYYYO","OWYYYYyO","OYYYYyyO",".OyyyyO.","..OOOO.."],
+["...WW...","..WOW...","...W....",".OWWYO..","OWYYYYYO","OYYYyyYO",".OyyyyO.","..OOOO.."],
+["..OOOO..",".OWW.YO.","OW.YYYYO","OWYYYY.O","OYY.YYyO",".OyyyyO.","..O.O...","........"],
+["O......O","OO....OO",".OOOOOO.",".ORRRRO.","ORWRRWRO","ORRRRRRO",".ORRRRO.","..OOOO.."],
+["...RR...","..RRYR..",".RRYYRR.","RRYWYRR.","RRYYYYRR",".RYYYYR.","..RYYR..","...RR..."]];
+const HELL_ICON_URL=HELL_ICON_DEFS.map(m=>makeSprite(m).toDataURL());
+
 /* ================= RETRO ARCADE LOGOTYPE ================= */
 function retroText(ctx,str,cx,y,sc,align=1,bands){
   const B=bands||['#ffef9e','#f7c548','#d99a26'];
@@ -422,25 +461,3 @@ function retroText(ctx,str,cx,y,sc,align=1,bands){
 const BANDS_GOLD =['#ffef9e','#f7c548','#d99a26'];
 const BANDS_RED  =['#ff9e6e','#e04a3a','#b7372c'];
 const BANDS_CREAM=['#ffffff','#fdf6e3','#d9cdb2'];
-/* ================= MAGMA COIN (hell currency) =================
-   The exact coin silhouette re-skinned in magma: dark crust
-   outline, orange body, white-hot highlight. Own frame set so
-   the spin animation works identically in hell. */
-const MAGPAL={O:'#3a1208',W:'#ffe9a8',Y:'#ff8c30',y:'#c23a10'};
-function magmaSprite(rows){const c=document.createElement('canvas');
-  c.width=rows[0].length;c.height=rows.length;const x=c.getContext('2d');
-  rows.forEach((row,ry)=>{for(let rx=0;rx<row.length;rx++){const ch=row[rx];
-    if(ch!=='.'){x.fillStyle=MAGPAL[ch];x.fillRect(rx,ry,1,1);}}});
-  return c;}
-const MAGMA_FRAMES={
-  8:magmaSprite([
-  "..OOOO..",".OWWYYO.","OWWYYYYO","OWYYYYyO","OYYYYyyO","OYyyyyyO",".OyyyyO.","..OOOO.."]),
-  6:magmaSprite([
-  "..OO..",".OWYO.","OWWYYy","OWYYYy","OYYyyy","OYyyyy",".OyyO.","..OO.."]),
-  4:magmaSprite([
-  ".OO.","OWYO","OWYy","OWYy","OYyy","OYyy","OyyO",".OO."]),
-  2:magmaSprite([
-  "..","OY","WY","WY","WY","Yy","Oy",".."]),
-};
-const magmaURL=MAGMA_FRAMES[8].toDataURL();
-const magmaFrame=cv=>MAGMA_FRAMES[2*clamp(Math.round(4.6*cv),1,4)];

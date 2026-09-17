@@ -1,12 +1,14 @@
 /* ============================================================
    CoinFall Pixel — 05-entities
-   player physics, Bob/Helper AI, coins + magnet, the coin
-   portal, and the particle / floating-text system.
+   player physics, Bob/Helper/Devil AI, coins + magnet, the coin
+   portal, fireballs, and the particle / floating-text system.
 
-   v3: DIMENSION ECONOMY — pickups credit the ACTIVE world's
-   lifetime (HL.earned in hell = MAGMA COIN lifetime,
-   stats.earned in the overworld). Coin value/upgrades read the
-   live per-world state.
+   v4: HELL SHOP — coin payout uses coinValBase() (+MAGMA COIN
+   VALUE in hell); overheated coins (x3, fire trail); coin
+   lifespan via restLife() (COIN DISSIPATION; 100 = never); the
+   DEVIL shoots homing fireballs at distant coins (HELLFIRE
+   improves speed/rate/accuracy).
+   v3: pickups credit the ACTIVE world's lifetime.
    v2: POPUP TEXT pref gates the floating +N texts.
    ============================================================ */
 'use strict';
@@ -38,8 +40,7 @@ function greyPuff(x,y){if(!particlesOn)return;
     gz:60,t:0,life:0.4,col:'#8b8498',sz:1});}
 function popText(x,y,str,col,sc=1){texts.push({x,y,str,col,sc,t:0});}
 
-/* ================= COIN PORTAL =================
-   form (10s swirl) -> on (10s ejection) -> out (0.9s shrink/fade) */
+/* ================= COIN PORTAL ================= */
 const PORTAL_FORM=10, PORTAL_ON=10, PORTAL_OUT=0.9;
 let portal=null,portalCd=0;
 function startPortal(){
@@ -119,7 +120,8 @@ function spawnCoin(baseX){
   let x=baseX==null?rand(16,xMax):clamp(baseX+rand(-16,16),16,xMax);
   coinList.push({x,y:-10,vy:rand(0,40),
     landY:landPhase==='idle'?landYFor(x+4):GROUND_Y,
-    state:'fall',spin:rand(0,6),restT:0});
+    state:'fall',spin:rand(0,6),restT:0,
+    hot:world==='hell'&&Math.random()<overheatChance()});
 }
 function tryPortalRoll(){
   if(buffs.portal&&!portal&&portalCd<=0&&Math.random()<0.0015)startPortal();
@@ -127,27 +129,25 @@ function tryPortalRoll(){
 function collect(c){
   combo++;comboT=2.2;
   const mult=streakMult(combo);
-  const v=Math.round((1+lv.value)*mult*coinMult());
+  const v=Math.round(coinValBase()*mult*coinMult())*(c.hot?3:1);
   coins+=v;
-  /* credit the ACTIVE world's lifetime earned */
   if(world==='hell')HL.earned+=v; else stats.earned+=v;
   burst(c.x+4,c.y+4);
-  /* POPUP TEXT toggle: only the floating +N is gated */
   if(popTextOn)popText(c.x+4,c.y-2,'+'+group(v),
-    combo>=8?'#ff9040':combo>=4?'#f7c548':'#fdf6e3',combo>=8?2:1);
+    c.hot?'#ff8c30':combo>=8?'#ff9040':combo>=4?'#f7c548':'#fdf6e3',combo>=8?2:1);
   if(combo===8)tone(1170,0,0.12,'square',0.11,0.13);
   flashCounter();refreshHUD();setStreak(mult);
   sfx.pickup(combo);
   if(shakeOn)shake=Math.min(1.6,0.8+combo*0.05);
   tryPortalRoll();
 }
-function workerCollect(c){
-  const v=Math.round((1+lv.value)*coinMult());
+function workerCollect(c,hot){
+  const v=Math.round(coinValBase()*coinMult())*(hot?3:1);
   coins+=v;
   if(world==='hell')HL.earned+=v; else stats.earned+=v;
   miniBurst(c.x+4,c.y+4);
-  /* POPUP TEXT toggle: only the floating +N is gated */
-  if(popTextOn)popText(c.x+4,c.y-2,'+'+group(v),'#f7f0dc',1);
+  if(popTextOn)popText(c.x+4,c.y-2,'+'+group(v),
+    hot?'#ff8c30':'#f7f0dc',1);
   flashCounter();refreshHUD();
   sfx.pickup(-2);
   tryPortalRoll();
@@ -164,9 +164,8 @@ function updateCoins(dt){
   const pcx=player.x+5,pcy=player.y+7;
   const mR=magnetRadius();
   for(let i=coinList.length-1;i>=0;i--){const c=coinList[i];
-    const life=c.portalC?4.5:REST_LIFE;
+    const life=c.portalC?4.5:restLife();
     const dx=pcx-(c.x+4),dy=pcy-(c.y+4),d=Math.hypot(dx,dy);
-    /* MAGNET: ANY coin entering the radius becomes homing */
     if(mR>0&&!c.mag&&d<mR){c.mag=true;c.state='fall';c.restT=0;c.vx=0;c.vy=0;}
     if(c.mag){
       if(d>1){
@@ -185,7 +184,63 @@ function updateCoins(dt){
       c.restT+=dt*cTS;
       if(c.restT>life){greyPuff(c.x+4,c.y+4);sfx.miss();coinList.splice(i,1);continue;}
     }
+    /* overheated coins: fire trail */
+    if(c.hot&&particlesOn&&Math.random()<dt*14)
+      parts.push({x:c.x+4+rand(-2,2),y:c.y+4+rand(-2,2),
+        vx:rand(-12,12),vy:rand(-42,-14),gz:-30,t:0,life:rand(0.25,0.5),
+        col:rand()<0.5?'#ff8c30':rand()<0.5?'#ffd24a':'#c23a10',sz:1,star:rand()<0.2});
     if(Math.hypot(pcx-(c.x+4),pcy-(c.y+4))<pickupReach()){collect(c);coinList.splice(i,1);}
+  }
+}
+
+/* ================= DEVIL FIREBALLS =================
+   The Devil (hell worker) launches homing fireballs at coins
+   beyond its pickup reach. HELLFIRE levels: faster projectiles,
+   quicker fire rate, tighter homing (the curve). */
+const fireballs=[];
+function updateDevilFire(dt){
+  if(world!=='hell'||!workerOwned)return;
+  worker.fireT=Math.max(0,(worker.fireT||0)-dt);
+  if(worker.fireT<=0){
+    let best=null,bd=0;
+    for(const c of coinList){
+      const d=Math.hypot((c.x+4)-(worker.x+5),(c.y+4)-(worker.y+7));
+      if(d>workerReach()+10&&d<170&&(!best||d>bd)){bd=d;best=c;}
+    }
+    if(best){
+      worker.fireT=1.5-clamp(lv.hellfire,0,100)*0.009;
+      const spd=115+clamp(lv.hellfire,0,100)*1.3;
+      const dx=(best.x+4)-(worker.x+5),dy=(best.y+4)-(worker.y+7);
+      const d=Math.hypot(dx,dy)||1;
+      const acc=0.25+0.75*clamp(lv.hellfire,0,100)/100;
+      fireballs.push({x:worker.x+5,y:worker.y+6,
+        vx:dx/d*spd,vy:dy/d*spd,spd,acc,tgt:best,t:0});
+      if(particlesOn)for(let i=0;i<3;i++)
+        parts.push({x:worker.x+5,y:worker.y+6,vx:rand(-20,20),vy:rand(-30,10),
+          gz:0,t:0,life:0.25,col:'#ff8c30',sz:1});
+      sfx.tick();
+    }else worker.fireT=0.4;
+  }
+  for(let i=fireballs.length-1;i>=0;i--){const f=fireballs[i];
+    f.t+=dt;
+    const t=f.tgt;
+    if(!t||!coinList.includes(t)){fireballs.splice(i,1);continue;}
+    const dx=(t.x+4)-f.x,dy=(t.y+4)-f.y,d=Math.hypot(dx,dy)||1;
+    /* steering toward the target scaled by accuracy — low HELLFIRE
+       levels curve wide and can even miss past, high levels home tight */
+    const k=Math.min(1,f.acc*7*dt);
+    f.vx+=(dx/d*f.spd-f.vx)*k;
+    f.vy+=(dy/d*f.spd-f.vy)*k;
+    f.x+=f.vx*dt;f.y+=f.vy*dt;
+    if(particlesOn&&Math.random()<dt*26)
+      parts.push({x:f.x,y:f.y,vx:rand(-8,8),vy:rand(-8,8),gz:0,t:0,
+        life:rand(0.2,0.4),col:rand()<0.5?'#ff8c30':'#c23a10',sz:1});
+    if(d<5){
+      workerCollect(t,t.hot);
+      const idx=coinList.indexOf(t);
+      if(idx>=0)coinList.splice(idx,1);
+      fireballs.splice(i,1);
+    }else if(f.t>3.2)fireballs.splice(i,1);
   }
 }
 
@@ -244,7 +299,7 @@ function tryDrop(){
     dust(player.x+5,player.y+player.h,3);sfx.drop();}
 }
 
-/* ================= WORKER AI (Bob & Helper) ================= */
+/* ================= WORKER AI (Bob / Helper / Devil) ================= */
 function updateWorkerEnt(w,dt,hMode){
   w.cool=Math.max(0,w.cool-dt);
   w.jumpCd=Math.max(0,w.jumpCd-dt);
@@ -346,6 +401,6 @@ function updateWorkerEnt(w,dt,hMode){
     for(let i=coinList.length-1;i>=0;i--){const c=coinList[i];
       if(Math.hypot(pcx-(c.x+4),pcy-(c.y+4))<reach){
         w.cool=workerCooldown();
-        workerCollect(c);coinList.splice(i,1);break;}}
+        workerCollect(c,c.hot);coinList.splice(i,1);break;}}
   }
 }

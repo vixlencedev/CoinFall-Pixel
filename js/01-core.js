@@ -2,26 +2,22 @@
    CoinFall Pixel — 01-core
    helpers, canvas, palette, sprite factory, upgrade definitions,
    shared game state, menu-exclusivity registry, and save/load
-   glue. Loads right after save.js.
-   NOTE: load() is INVOKED from 11-main's boot sequence, not here.
+   glue.
 
-   v5: DIMENSION ECONOMY — the live gameplay vars (coins, lv,
-   buffs, workerOwned, cardUnlock, cardReadyAt, buffOrder) are
-   the ACTIVE world's state. Two containers (OW / HL) hold each
-   dimension's progression; stashWorldState/activateWorldState
-   exchange them on travel. HELL.earned is the hell lifetime
-   (MAGMA COIN leaderboard); stats.earned stays the overworld
-   lifetime. curEarned() = the active world's earned. The saved
-   top-level fields are ALWAYS the overworld; hell is persisted
-   under save.hell; save.world persists the current dimension.
-
-   v4: world ('over'|'hell'), hell gate (HELL_UNLOCK derived).
-   v3: POPUP TEXT pref. v2: lbData { uid, epoch, name, resetAt }.
+   v6: HELL SHOP TREE — UPG_HELL is hell's own upgrade list with
+   its own level keys (HL.lv): OVERHEATED COINS (spawn chance of
+   x3 flaming coins), MAGMA COIN VALUE (+1/level, max 500),
+   COIN DISSIPATION (longer coin lifespan, 100 = never), DEVIL
+   (worker: collects + fireballs at far coins) and HELLFIRE
+   (fireball speed/rate/accuracy). Stat helpers branch on world:
+   hell has FIXED base spawn/radius/gravity/luck (no overworld
+   upgrades carry or exist there). Cards never apply in hell.
+   v5: per-world state containers (OW/HL). v4: dimensions.
    ============================================================ */
 'use strict';
 
 /* build stamp: bump on every deploy; visible in the console */
-console.info('%cCFPX build: hell-economy-v1','color:#a05ae0;font-weight:bold');
+console.info('%cCFPX build: hell-shop-v1','color:#a05ae0;font-weight:bold');
 
 /* ================= HELPERS ================= */
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -88,7 +84,7 @@ function makeSprite(rows){const c=document.createElement('canvas');
     if(ch!=='.'){x.fillStyle=PAL[ch];x.fillRect(rx,ry,1,1);}}});
   return c;}
 
-/* ================= UPGRADES ================= */
+/* ================= OVERWORLD UPGRADES ================= */
 const WORKER_COST=500;
 const CARD_UNLOCK_COST=5000;
 const UPG=[
@@ -118,39 +114,65 @@ const UPG=[
 ];
 const upgMax={}; UPG.forEach(u=>{if(u.max)upgMax[u.id]=u.max;});
 
-const spawnInterval=()=>1.6*Math.pow(2,-lv.spawn/30);
-const pickupReach =()=>19+0.45*lv.radius;
-const fallMult    =()=>1+0.04*lv.gravity;
-const luckChance  =()=>0.005*lv.luck;
+/* ================= HELL UPGRADES (MAGMA COIN economy) ================= */
+const DEVIL_COST=2000;
+const UPG_HELL=[
+ {id:'overheat', name:'OVERHEATED COINS', max:100, hIcon:0,
+  cost:l=>Math.round(40*Math.pow(1.14,l)),
+  txt:l=>`OVERHEAT CHANCE: ${(0.5*l).toFixed(1)}%`},
+ {id:'mvalue', name:'MAGMA COIN VALUE', max:500, hIcon:1,
+  cost:l=>Math.round(10+6*l+0.05*Math.pow(l,2.2)),
+  txt:l=>`PAYOUT: ${group(1+l)} PER COIN`},
+ {id:'dissipate', name:'COIN DISSIPATION', max:100, hIcon:2,
+  cost:l=>Math.round(35*Math.pow(1.12,l)),
+  txt:l=>l>=100?'COINS NEVER DESPAWN'
+       :`COIN LIFESPAN: ${(12-0.1*l).toFixed(1)}S`},
+ {id:'devil', name:'DEVIL', hIcon:3},
+ {id:'hellfire', name:'HELLFIRE', max:100, hIcon:4, needsDevil:true,
+  cost:l=>Math.round(120*Math.pow(1.12,l)),
+  txt:l=>`FIREBALL PWR: ${Math.round((0.25+0.75*l/100)*100)}%`},
+];
+const upgMaxHell={}; UPG_HELL.forEach(u=>{if(u.max)upgMaxHell[u.id]=u.max;});
+
+/* ---- per-world stat helpers (branch on the active dimension) ---- */
+const spawnInterval=()=>world==='hell'?1.6:1.6*Math.pow(2,-lv.spawn/30);
+const pickupReach =()=>world==='hell'?19:19+0.45*lv.radius;
+const fallMult    =()=>world==='hell'?1:1+0.04*lv.gravity;
+const luckChance  =()=>world==='hell'?0:0.005*lv.luck;
+/* coin payout base per world */
+const coinValBase =()=>world==='hell'?1+lv.mvalue:1+lv.value;
+/* overheat chance (hell only) */
+const overheatChance=()=>world==='hell'?0.005*lv.overheat:0;
+/* rest lifetime: hell shrinks dissipation; 100 = effectively never */
+const restLife=()=>world==='hell'
+  ?(lv.dissipate>=100?1e9:Math.max(2,12-0.1*lv.dissipate))
+  :12;
 const wEase=l=>1-Math.pow(1-clamp(l,0,100)/100,2);
-const workerSpeed   =()=>50+115*wEase(lv.wspeed);
+const workerSpeed   =()=>world==='hell'?70:50+115*wEase(lv.wspeed);
 const workerPct     =l=>Math.round((50+115*wEase(l))/1.65);
-const workerReach   =()=>13+7*wEase(lv.wspeed);
-const workerCooldown=()=>Math.max(0.35,1.3-0.95*wEase(lv.wspeed));
+/* devil fireball power % (label) */
+const devilPct=()=>Math.round((25+75*clamp(lv.hellfire,0,100)/100));
+const workerReach   =()=>world==='hell'?15:13+7*wEase(lv.wspeed);
+const workerCooldown=()=>world==='hell'?0.7:Math.max(0.35,1.3-0.95*wEase(lv.wspeed));
 const cardCdH=()=>Math.max(1,24-23*(clamp(lv.cardcd,0,100)/100));
 
 const nearShop=()=>Math.abs((player.x+5)-SHOP_CX)<50;
 
-/* ================= DIMENSIONS =================
-   world: 'over' | 'hell'. The hell gate forms on the LEFT of the
-   overworld once lifetime earned crosses HELL_UNLOCK (derived —
-   no save state). Once open, the SAME gate is the return portal
-   from hell. */
+/* ================= DIMENSIONS ================= */
 let world='over';
 const HELL_UNLOCK=1000000;
-const hellGate={mode:'none',t:0,x:96,y:0};   /* mode: none|form|open */
+const hellGate={mode:'none',t:0,x:96,y:0};
 const nearHellGate=()=>hellGate.mode==='open'&&Math.abs((player.x+5)-hellGate.x)<32;
 
 /* ---- per-world progression containers ----
-   The live vars below are the ACTIVE world's state. OW/HL hold
-   each dimension's full progression (MAGMA COIN economy in hell:
-   all zeros until earned there). */
-const mkW=()=>({coins:0,workerOwned:false,cardUnlock:false,cardReadyAt:0,
-  buffOrder:[],
+   The live vars below are the ACTIVE world's state. In hell the
+   live `lv` holds the HELL upgrade keys (UPG_HELL ids). */
+const OW={coins:0,workerOwned:false,cardUnlock:false,cardReadyAt:0,buffOrder:[],
   lv:{value:0,spawn:0,radius:0,gravity:0,luck:0,wspeed:0,cardcd:0},
-  buffs:{magnet:0,dbljump:0,speed2x:0,helper:0,coins2x:0,portal:0},
-  earned:0});
-const OW=mkW(), HL=mkW();
+  buffs:{magnet:0,dbljump:0,speed2x:0,helper:0,coins2x:0,portal:0},earned:0};
+const HL={coins:0,workerOwned:false,cardUnlock:false,cardReadyAt:0,buffOrder:[],
+  lv:{overheat:0,mvalue:0,dissipate:0,hellfire:0},
+  buffs:{magnet:0,dbljump:0,speed2x:0,helper:0,coins2x:0,portal:0},earned:0};
 
 function stashWorldState(){
   const S=world==='hell'?HL:OW;
@@ -179,28 +201,24 @@ let coins=0;
 let workerOwned=false;
 let cardUnlock=false;
 let cardReadyAt=0;
-const lv={wspeed:0,value:0,spawn:0,radius:0,gravity:0,luck:0,cardcd:0};
+/* live lv/buffs: the ACTIVE world's state (keys depend on world) */
+let lv={value:0,spawn:0,radius:0,gravity:0,luck:0,wspeed:0,cardcd:0};
 const buffs={magnet:0,dbljump:0,speed2x:0,helper:0,coins2x:0,portal:0};
 let buffOrder=[];
-/* settings (all saved in prefs) — popTextOn gates the floating
-   +N coin pickup texts (player AND worker pickups) */
 let particlesOn=true, cloudsOn=true, animsOn=true, shakeOn=true, starsOn=true,
     popTextOn=true;
-/* lifetime stats (saved) — earned is the OVERWORLD lifetime */
 const stats={playtime:0,earned:0,upgrades:0,started:false,tut:false,name:''};
-/* leaderboard client record (saved; managed by 13-online.js) */
 const lbData={uid:'',epoch:0,name:'',resetAt:0};
 const achUnlocked={};
 let shopOpen=false,setOpen=false,achOpen=false,appPaused=false;
 let combo=0,comboT=0,shake=0,time=0,spawnT=0.8,saveT=0,shopT=0,setT=0,achT=0;
 const coinList=[],parts=[],texts=[];
-const REST_LIFE=12, REST_BLINK=10, COIN_CAP=24;
+const REST_BLINK=10, COIN_CAP=24;
 
 const player={x:70,y:191,w:10,h:15,vx:0,vy:0,face:1,
   grounded:true,standP:null,coyote:0,jbuf:0,dropT:0,air:0,
   squash:0,animT:0,moved:false,jumped:false,dropped:false};
 
-/* --- Bob --- */
 const worker={x:210,y:191,w:10,h:15,vx:0,vy:0,face:1,grounded:true,standP:null,
   animT:0,target:null,retarget:0,jumpCd:0,cool:0,dropT:0,wanderX:null,wanderT:0};
 let helper=null;
@@ -208,13 +226,8 @@ let helper=null;
 const keys={left:false,right:false};
 let jumpQueued=false;
 
-/* ================= SAVE / LOAD (save.js glue) =================
-   NOTE on integer handling: epoch timestamps (cardReadyAt, lb.resetAt)
-   and big counters (coins, stats.earned) can exceed 2^31. They must
-   NEVER be coerced with |0 — that truncates to signed int32 and
-   wraps Date.now() (~1.7e12) NEGATIVE. */
+/* ================= SAVE / LOAD (save.js glue) ================= */
 function save(){
-  /* top-level fields are ALWAYS the overworld state */
   const oc=world==='over';
   SaveData.write({
     coins:   oc?coins:OW.coins,
@@ -244,8 +257,6 @@ function save(){
   });
 }
 
-/* shared load-body: re-syncs the leaderboard identity (boot +
-   IndexedDB late load). */
 function applyIdentity(s){
   const ST=(s&&s.stats)||{};
   stats.name=(typeof ST.name==='string')?ST.name.slice(0,12).toUpperCase():'';
@@ -258,20 +269,6 @@ function applyIdentity(s){
 
 function load(){
   const s=SaveData.load();
-  world=(s&&s.world==='hell')?'hell':'over';
-  coins=(s&&typeof s.coins==='number')?s.coins:0;
-  workerOwned=!!(s&&s.workers&&s.workers.bob);
-  cardUnlock=!!(s&&s.cards&&s.cards.unlocked);
-  cardReadyAt=(s&&s.cards&&typeof s.cards.readyAt==='number')?s.cards.readyAt:0;
-  const L=(s&&s.levels)||{};
-  for(const k in lv) if(typeof L[k]==='number')
-    lv[k]=clamp(L[k],0,upgMax[k]||100);
-  const BF=(s&&s.cards&&s.cards.buffs)||{};
-  for(const k in buffs) if(typeof BF[k]==='number')
-    buffs[k]=clamp(BF[k]|0,0,9);
-  const BO=(s&&s.cards&&s.cards.order);
-  buffOrder=Array.isArray(BO)
-    ? BO.filter(id=>typeof buffs[id]==='number') : [];
   const AU=(s&&s.audio)||{};
   sfxVol=clamp((typeof AU.sfx==='number')?AU.sfx|0:100,0,100);
   musicVol=clamp((typeof AU.music==='number')?AU.music|0:55,0,100);
@@ -291,29 +288,40 @@ function load(){
   applyIdentity(s);
   const ACu=(s&&s.ach&&s.ach.unlocked)||{};
   for(const k in ACu) if(ACu[k]) achUnlocked[k]=1;
-  /* the live vars just restored are the OVERWORLD state */
+  /* OVERWORLD container from the top-level fields */
   world='over';
+  lv={value:0,spawn:0,radius:0,gravity:0,luck:0,wspeed:0,cardcd:0};
+  coins=(s&&typeof s.coins==='number')?s.coins:0;
+  workerOwned=!!(s&&s.workers&&s.workers.bob);
+  cardUnlock=!!(s&&s.cards&&s.cards.unlocked);
+  cardReadyAt=(s&&s.cards&&typeof s.cards.readyAt==='number')?s.cards.readyAt:0;
+  const L=(s&&s.levels)||{};
+  for(const k in lv) if(typeof L[k]==='number')
+    lv[k]=clamp(L[k],0,upgMax[k]||100);
+  const BF=(s&&s.cards&&s.cards.buffs)||{};
+  for(const k in buffs) if(typeof BF[k]==='number')
+    buffs[k]=clamp(BF[k]|0,0,9);
+  const BO=(s&&s.cards&&s.cards.order);
+  buffOrder=Array.isArray(BO)
+    ? BO.filter(id=>typeof buffs[id]==='number') : [];
   stashWorldState();
-  /* hell container from the save */
+  /* HELL container from the hell record */
   const H=(s&&s.hell)||{};
   HL.coins=(typeof H.coins==='number')?H.coins:0;
   HL.earned=(typeof H.earned==='number')?H.earned:0;
   HL.workerOwned=!!(H&&H.workerOwned);
-  HL.cardUnlock=!!(H&&H.cardUnlock);
-  HL.cardReadyAt=(H&&typeof H.cardReadyAt==='number')?H.cardReadyAt:0;
+  HL.cardUnlock=false;           /* cards never exist in hell */
+  HL.cardReadyAt=0;
+  HL.lv={overheat:0,mvalue:0,dissipate:0,hellfire:0};
   const HLv=(H&&H.levels)||{};
   for(const k in HL.lv) if(typeof HLv[k]==='number')
-    HL.lv[k]=clamp(HLv[k],0,upgMax[k]||100);
-  const HBf=(H&&H.buffs)||{};
-  for(const k in HL.buffs) if(typeof HBf[k]==='number')
-    HL.buffs[k]=clamp(HBf[k]|0,0,9);
-  HL.buffOrder=Array.isArray(H&&H.order)
-    ? H.order.filter(id=>typeof HL.buffs[id]==='number') : [];
+    HL.lv[k]=clamp(HLv[k],0,upgMaxHell[k]||100);
+  HL.buffs={magnet:0,dbljump:0,speed2x:0,helper:0,coins2x:0,portal:0};
+  HL.buffOrder=[];
   /* resume in the saved dimension */
   if(s&&s.world==='hell'){world='hell';activateWorldState();}
 }
 
-/* late-load: re-sync the leaderboard identity only (nametag). */
 SaveData.onLateLoad(snap=>{
   try{ applyIdentity(snap); }catch(e){}
 });

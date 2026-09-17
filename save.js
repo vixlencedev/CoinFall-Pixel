@@ -1,13 +1,9 @@
 /* ============================================================
-   CoinFall Pixel — SaveData module (v4.2)
-   v4.2: DIMENSIONS.
-   - world: 'over'|'hell' — the dimension the player logged out in.
-   - hell: full per-world progression record (MAGMA COIN economy):
-     { coins, earned, workerOwned, cardUnlock, cardReadyAt,
-       levels, buffs, order }. Completely separate from the
-     overworld record — zero carryover by design.
-   v4.1: lb { uid, epoch, name, resetAt }.
-   v4.0: lb { uid, epoch } season support.
+   CoinFall Pixel — SaveData module (v4.3)
+   v4.3: hell.levels now uses the HELL upgrade keys
+   { overheat, mvalue, dissipate, devil, hellfire } — the hell
+   shop is a separate upgrade tree (MAGMA COIN economy).
+   v4.2: world + hell record. v4.1: lb name/resetAt.
    ============================================================ */
 const SaveData = (() => {
   'use strict';
@@ -36,7 +32,7 @@ const SaveData = (() => {
     world: 'over',
     hell:  {
       coins:0, earned:0, workerOwned:false, cardUnlock:false, cardReadyAt:0,
-      levels: { value:0, spawn:0, radius:0, gravity:0, luck:0, wspeed:0, cardcd:0 },
+      levels: { overheat:0, mvalue:0, dissipate:0, hellfire:0 },
       buffs:  { magnet:0, dbljump:0, speed2x:0, helper:0, coins2x:0, portal:0 },
       order: []
     },
@@ -90,7 +86,6 @@ const SaveData = (() => {
       for(const k in raw.ach.unlocked)
         if(raw.ach.unlocked[k]) s.ach.unlocked[k] = 1;
     }
-    /* v4.2: dimension */
     s.world = raw.world==='hell' ? 'hell' : 'over';
     if(raw.hell && typeof raw.hell==='object'){
       const h = raw.hell;

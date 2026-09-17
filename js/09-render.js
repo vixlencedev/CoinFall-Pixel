@@ -1,20 +1,17 @@
 /* ============================================================
    CoinFall Pixel — 09-render
-   the full draw pipeline: sky, background layers, vegetation,
-   shop, platforms, entities, overlays, HUD hints, and the
-   title / easter-egg screens.
+   the full draw pipeline.
 
-   v7.2: HELL ECONOMY — MAGMA COIN sprites in hell, hell-themed
-   obsidian shop stall, E prompt lowered beside the gate, shop
-   prompt works in both dimensions.
-   v7.1: hell ambience — bg lava cascades, drifting sky smoke.
+   v7.3: HELL SHOP — Devil worker sprite + label in hell (micro
+   label shows FIREBALL PWR %), fireball projectiles drawn, hot
+   (overheated) coins flicker with a flame tuft. Everything else
+   as v7.2 (magma coins, hell stall, hell ambience).
    ============================================================ */
 'use strict';
 
-console.info('%cCFPX render: v7.2 (hell economy)','color:#4fa8dd;font-weight:bold');
+console.info('%cCFPX render: v7.3 (hell shop)','color:#4fa8dd;font-weight:bold');
 
 let sx=0,sy=0;
-/* wind helper: horizontal sway for vegetation */
 function windSway(x,amp,spd){return animsOn?Math.sin(time*spd+x*0.05)*amp:0;}
 function drawTree(x){
   const sw=windSway(x,2,1.6);
@@ -105,8 +102,6 @@ function drawShop(){
   g.fillStyle='#7a4a28';g.fillRect(x-14,G-10,10,1);g.fillRect(x-14,G-4,10,1);
   g.fillStyle='#c98d5a';g.fillRect(x-14,G-12,10,2);
 }
-/* hell shop stall: obsidian + magma, same footprint and look-at
-   behavior as the overworld shop */
 function drawHellShop(){
   const x=SHOP_X,w=SHOP_W,G=GROUND_Y;
   g.fillStyle='#1c1016';g.fillRect(x+5,G-10,4,10);g.fillRect(x+w-9,G-10,4,10);
@@ -152,13 +147,10 @@ function drawWorkerSprite(w,frames){
   g.drawImage(fr,-6,-17);
   g.restore();
 }
-/* worker labels: name in the mini 3x4 font, speed % in the
-   smaller 3x3 micro font underneath */
 function drawWorkerLabels(w,col){
   blitTextMini(g,w.nm,w.x+5+sx,w.y-16+sy,col,1);
-  blitTextMicro(g,workerPct(lv.wspeed)+'%',w.x+5+sx,w.y-9+sy,'#fdf6e3',1);
+  blitTextMicro(g,w.pct+'%',w.x+5+sx,w.y-9+sy,'#fdf6e3',1);
 }
-/* hell: animated lava surface over the pools baked into worldC */
 function drawLava(){
   if(world!=='hell')return;
   for(const L of lavaPools){
@@ -175,18 +167,27 @@ function drawLava(){
     }
   }
 }
+/* devil fireballs: magma core + hot center */
+function drawFireballs(){
+  if(world!=='hell')return;
+  for(const f of fireballs){
+    const x=Math.round(f.x),y=Math.round(f.y);
+    fillCircle(g,x,y,3,'#c23a10');
+    fillCircle(g,x,y,2,'#ff8c30');
+    g.fillStyle='#ffe9a8';g.fillRect(x-1,y-1,1,1);
+  }
+}
 function render(){
-  /* loading screen (drawn by 11-main's renderLoad) */
   if(loading){renderLoad();return;}
   drawSky();
   if(world==='over'&&cloudsOn)clouds.forEach(drawCloud);
-  if(world==='hell')drawHellSmoke();   /* smoke drifts where clouds would */
+  if(world==='hell')drawHellSmoke();
   if(world==='over')drawBirds();
   g.drawImage(mountC,0,0);
   g.drawImage(hillsC,0,0);
   g.drawImage(cliffC,0,0);
   g.drawImage(treesC,0,0);
-  if(world==='hell')drawHellBgFx();    /* lava cascades on the peaks */
+  if(world==='hell')drawHellBgFx();
   sx=shakeOn&&shake>0.05?Math.round(rand(-shake,shake)):0;
   sy=shakeOn&&shake>0.05?Math.round(rand(-shake,shake)):0;
   g.drawImage(worldC,sx,sy);
@@ -198,7 +199,6 @@ function render(){
   drawHellGate();
 
   for(const c of coinList){
-    /* magnetized coins fly freely — no ground shadow while homing */
     if(c.state==='fall'&&!c.mag){
       const sw=clamp(10-(c.landY-(c.y+8))/10,3,10);
       g.fillStyle='rgba(20,30,20,0.20)';
@@ -207,20 +207,31 @@ function render(){
       const blink=c.portalC?3.5:REST_BLINK;
       if(c.restT>blink&&Math.floor(c.restT*8)%2===0)continue;
     }
-    /* ANIMATIONS off: coins show their full face, frozen.
-       MAGMA COIN sprite in hell. */
     const spin=animsOn?c.spin+(c.state==='fall'?time*6:c.restT*2):0;
     const fr=(world==='hell'?magmaFrame:coinFrame)(Math.abs(Math.cos(spin)));
     g.drawImage(fr,Math.round(c.x+4-fr.width/2+sx),Math.round(c.y+sy));
+    /* overheated coins: flickering flame tuft */
+    if(c.hot){
+      const fl=animsOn?Math.round(Math.sin(time*14+c.x)*1):0;
+      g.fillStyle='#ff8c30';
+      g.fillRect(Math.round(c.x+3+sx),Math.round(c.y-2+fl+sy),2,2);
+      g.fillStyle='#ffd24a';
+      g.fillRect(Math.round(c.x+3+sx),Math.round(c.y-1+fl+sy),1,1);
+    }
   }
   if(workerOwned){
-    drawWorkerSprite(worker,FR_W);
-    drawWorkerLabels({nm:'BOB',x:worker.x,y:worker.y},'#f7c548');
+    const hell=world==='hell';
+    drawWorkerSprite(worker,hell?FR_D:FR_W);
+    drawWorkerLabels(
+      {nm:hell?'DEVIL':'BOB',x:worker.x,y:worker.y,
+       pct:hell?devilPct():workerPct(lv.wspeed)},
+      hell?'#ff8c30':'#f7c548');
   }
   if(helper){
     drawWorkerSprite(helper,FR_H);
-    drawWorkerLabels({nm:'HELPER',x:helper.x,y:helper.y},'#2fa8a0');
+    drawWorkerLabels({nm:'HELPER',x:helper.x,y:helper.y,pct:workerPct(lv.wspeed)},'#2fa8a0');
   }
+  drawFireballs();
   if(!player.grounded){
     const ly=groundBelow(player.x+5,player.y+player.h);
     if(ly<1e8){const d=ly-(player.y+player.h),pw=Math.max(3,10-d/12);
@@ -228,7 +239,6 @@ function render(){
       g.fillRect(Math.round(player.x+5-pw/2+sx),ly-1+sy,Math.round(pw),2);}}
   const airSt=player.grounded?0:Math.min(Math.abs(player.vy)/1400,0.16);
   const kx=1+player.squash-airSt,ky2=1-player.squash+airSt;
-  /* ANIMATIONS off: no idle bob */
   const bob=animsOn&&player.grounded&&Math.abs(player.vx)<=12&&(time%1.6<0.12)?1:0;
   let fr;
   if(!player.grounded)fr=FR.air;
@@ -240,8 +250,6 @@ function render(){
   g.drawImage(fr,-6,-17);
   g.restore();
 
-  /* @NAME nametag: 6x6 outlined @ + 5px tag font, outlined —
-     centered above the hero, both dimensions. */
   if(stats.name){
     const tag=String(stats.name);
     const wTot=8+1+tagW(tag);
@@ -262,7 +270,6 @@ function render(){
   if(warmAmt>0.01){g.fillStyle=`rgba(255,140,60,${(warmAmt*0.12).toFixed(3)})`;g.fillRect(0,0,VW,VH);}
   if(nightAmt>0.01){g.fillStyle=`rgba(12,16,48,${(nightAmt*0.32).toFixed(3)})`;g.fillRect(0,0,VW,VH);}
   if(shopOpen){g.fillStyle='rgba(20,14,40,0.20)';g.fillRect(0,0,VW,VH);}
-  /* hell ambience: red-dark veil + pulsing horizon heat glow */
   if(world==='hell'){
     g.fillStyle='rgba(80,12,0,0.12)';g.fillRect(0,0,VW,VH);
     const pg=0.05+0.03*Math.sin(time*2.2);
@@ -309,7 +316,6 @@ function render(){
     drawText(isTouch?'TAP E : OPEN SHOP':'PRESS E : OPEN SHOP',
       SHOP_CX,GROUND_Y-96+Math.sin(time*4)*2,
       world==='hell'?'#ff8c30':'#f7c548',1,1);
-  /* hell gate: the letter E, low — right above the vortex */
   if(nearHellGate()&&!cardOpen&&!shopOpen&&!setOpen&&!achOpen)
     drawText('E',hellGate.x,GROUND_Y-38+Math.sin(time*4)*2,
       world==='hell'?'#8fe8f8':'#ff8c30',1,1);

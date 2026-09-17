@@ -312,6 +312,7 @@ function update(dt){
       updateLand(wdt);
       if(workerOwned)updateWorkerEnt(worker,wdt);
       if(helper)updateWorkerEnt(helper,wdt,true);
+      if(world==='hell'&&workerOwned)updateDevilFire(wdt);
       updatePortal(wdt);
       updateHellGate(wdt);
       if(world==='hell')updateHellAmbience(wdt);

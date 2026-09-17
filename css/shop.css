@@ -130,3 +130,25 @@
 }
 #tE{display:none}
 #tE.show{display:flex}
+/* ---------- HELL SHOP THEME (MAGMA COIN economy) ---------- */
+#stage.hell #shopPanel{background:repeating-linear-gradient(90deg,rgba(0,0,0,.2) 0 2px,transparent 2px 38px),linear-gradient(180deg,#2a1010 0%,#1c0a0a 62%,#120505 100%);border-left:3px solid #140505;box-shadow:-3px 0 0 0 #3a1208,-18px 0 42px rgba(20,2,0,.6)}
+#stage.hell #shopAwn{background:repeating-linear-gradient(180deg,#c23a10 0 calc(var(--us)*6px),#3a1208 calc(var(--us)*6px) calc(var(--us)*12px));border-right-color:#140505}
+#stage.hell #shopHead{background:rgba(40,8,4,.55);border-bottom-color:#5c1408}
+#stage.hell #shopTitle{color:#ff8c30}
+#stage.hell #shopClose{background:#241109;border-color:#5c1408;box-shadow:inset 0 0 0 1px #7a1f0c}
+#stage.hell .qty{background:#241109;color:#d97a4a;border-color:#140505;box-shadow:inset 0 0 0 1px #4a1a10}
+#stage.hell .qty.on{background:#ff8c30;color:#241708;box-shadow:inset -2px -2px 0 #c23a10,inset 2px 2px 0 #ffd24a}
+#stage.hell #shopBal{color:#ff8c30}
+#stage.hell .catdiv .cline{background:#7a3a1a;box-shadow:1px 1px 0 rgba(0,0,0,.8)}
+#stage.hell .catdiv .clabel{color:#c9713a}
+#stage.hell .uprow{background:linear-gradient(180deg,#241109,#1a0a06);border-color:#0e0402;box-shadow:inset 0 0 0 2px #4a1a10,inset 0 3px 0 rgba(255,140,48,.05),0 2px 0 rgba(0,0,0,.3)}
+#stage.hell .uprow:hover{background:linear-gradient(180deg,#2e160c,#22100a)}
+#stage.hell .uname{color:#ffcfa0}
+#stage.hell .ulvl{color:#ff8c30}
+#stage.hell .ulvl.mx{color:#8fd97a}
+#stage.hell .usub{color:#c9885a}
+#stage.hell .buy{background:#ff8c30;color:#241708;box-shadow:inset -2px -2px 0 #c23a10,inset 2px 2px 0 #ffd24a,0 0 0 2px #140505,0 2px 0 rgba(0,0,0,.4)}
+#stage.hell .buy img{filter:none}
+#stage.hell .buy.cant{background:#4a2416;color:#c9885a;box-shadow:inset -2px -2px 0 #381a0e,inset 2px 2px 0 #5c2f1c,0 0 0 2px #140505}
+#stage.hell .buy.max{background:#1c0d08;color:#a9683f;box-shadow:inset 0 0 0 2px #4a1a10,0 0 0 2px #140505}
+#stage.hell .buy.own{background:#2e1a14;color:#ff8c30;box-shadow:inset 0 0 0 2px #5c2a14,0 0 0 2px #140505}
