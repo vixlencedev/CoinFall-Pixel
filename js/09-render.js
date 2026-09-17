@@ -5,16 +5,19 @@
    title / easter-egg screens. The loading screen itself lives
    in 11-main (renderLoad) and is dispatched from here.
 
+   v7.1: hell ambience — background lava-vein cascades drawn
+   behind the platforms, drifting smoke in the sky (replacing
+   clouds), plus the existing lava pools / gate / red veil.
    v7: DIMENSIONS — hell branches: no clouds/birds/shop in hell,
    animated lava pools + hell gate drawn, hell ambient red-dark
-   overlay with pulsing horizon glow. Overworld unchanged.
+   overlay with pulsing horizon glow.
    v6.7: sizing pass — nametag uses the 5px tag font + 6x6 @;
    BOB/HELPER names use the 3x4 mini font; their speed % uses
    the 3x3 micro font.
    ============================================================ */
 'use strict';
 
-console.info('%cCFPX render: v7 (dimensions)','color:#4fa8dd;font-weight:bold');
+console.info('%cCFPX render: v7.1 (hell ambience)','color:#4fa8dd;font-weight:bold');
 
 let sx=0,sy=0;
 /* wind helper: horizontal sway for vegetation */
@@ -152,11 +155,13 @@ function render(){
   if(loading){renderLoad();return;}
   drawSky();
   if(world==='over'&&cloudsOn)clouds.forEach(drawCloud);
+  if(world==='hell')drawHellSmoke();   /* smoke drifts where clouds would */
   if(world==='over')drawBirds();
   g.drawImage(mountC,0,0);
   g.drawImage(hillsC,0,0);
   g.drawImage(cliffC,0,0);
   g.drawImage(treesC,0,0);
+  if(world==='hell')drawHellBgFx();    /* lava cascades on the peaks */
   sx=shakeOn&&shake>0.05?Math.round(rand(-shake,shake)):0;
   sy=shakeOn&&shake>0.05?Math.round(rand(-shake,shake)):0;
   g.drawImage(worldC,sx,sy);
@@ -288,7 +293,8 @@ function render(){
       SHOP_CX,GROUND_Y-96+Math.sin(time*4)*2,'#f7c548',1,1);
   /* hell gate: only the letter E bobs above the portal */
   if(nearHellGate()&&!cardOpen&&!shopOpen&&!setOpen&&!achOpen)
-    drawText('E',hellGate.x,GROUND_Y-52+Math.sin(time*4)*2,'#ff8c30',1,1);
+    drawText('E',hellGate.x,GROUND_Y-52+Math.sin(time*4)*2,
+      world==='hell'?'#8fe8f8':'#ff8c30',1,1);
   /* tutorial shows only until the player has done all three steps
      (persisted in stats.tut — veterans never see it again) */
   if(!stats.tut){

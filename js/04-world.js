@@ -4,15 +4,19 @@
    procedural scattered platform generator, land-switch state
    machine, and the day/night cycle with sky rendering.
 
-   v2: DIMENSIONS — buildLayers/makePlatSpr branch on `world`.
-   buildHellLayers builds the hell backdrop (red-rock peaks, lava
-   mounds, stalagmite spires, magma-crust ground with glowing
-   cracks, ash debris, WELCOME TO HELL sign, lava pools).
-   applyDimension() swaps the whole world (platforms regenerated,
-   entities repositioned) — used by the flashbang travel in
-   11-main. updateHellGate/drawHellGate run the hell gate (forms
-   on unlock; bidirectional return portal). Hell sky is a fixed
-   dark-red palette; clouds/birds/day-night never render there.
+   v3: HELL POLISH —
+   - Gate: outer glow + side fangs removed (clean vortex); the
+     gate uses the fire palette in the overworld and an
+     overworld-colored (teal/blue) palette inside hell, matching
+     where it leads. Ember colors follow the palette.
+   - Hell platforms: rich detail — cooling crust patches, cap
+     glints, lit/shadow edges, strata, cracks, magma drips,
+     obsidian chunks.
+   - Background FX: lava veins cascading down the big peaks with
+     a flowing bright blob, drifting smoke puffs in the sky
+     (replacing clouds) and falling ash flakes.
+   v2: DIMENSIONS — buildLayers/makePlatSpr branch on `world`,
+   applyDimension() swaps the whole world, hell gate + ambience.
    ============================================================ */
 'use strict';
 
@@ -25,6 +29,8 @@ let mountC,hillsC,treesC,cliffC,worldC,wctx;
 const clouds=[],stars=[],birds=[],fallStars=[];
 let treeList=[],vegList=[],flagRef=null;
 let lavaPools=[];                      /* hell only: {x,w} on the ground */
+let lavaVeins=[];                      /* hell only: lava cascades on peaks */
+const hellSmoke=[];                    /* hell only: drifting sky smoke */
 const platSpan=p=>[p.x-2,p.x+p.w+2];
 
 /* hell gate formation duration (s) */
@@ -139,8 +145,9 @@ function buildLayers(){
    Terraria-pit inspired: jagged red-rock mountains (no snow),
    dark lava mounds, stalagmite spires with magma tips, scorched
    ground with a magma crust and glowing cracks, ash debris, the
-   WELCOME TO HELL sign, and lava pools (static body baked here;
-   the animated surface highlight is drawn per-frame in render). */
+   WELCOME TO HELL sign, lava pools (static body baked here; the
+   animated surface highlight is drawn per-frame in render), and
+   lava veins cascading down the big peaks (drawn per-frame). */
 function buildHellLayers(){
   let t;
   t=mkCanvas(VW,VH);mountC=t[0];
@@ -173,7 +180,8 @@ function buildHellLayers(){
    spire(Math.round(VW*.48),GROUND_Y+24,40,13);
    spire(Math.round(VW*.76),GROUND_Y+22,26,9);}
   t=mkCanvas(VW,VH);worldC=t[0];wctx=t[1];
-  {vegList.length=0;treeList.length=0;lavaPools.length=0;
+  {vegList.length=0;treeList.length=0;lavaPools.length=0;lavaVeins.length=0;
+   hellSmoke.length=0;
    _seed=1337;
     wctx.fillStyle='#241009';wctx.fillRect(0,GROUND_Y,VW,VH-GROUND_Y);
     for(let i=0;i<Math.round(VW*VH/1200);i++){
@@ -212,8 +220,52 @@ function buildHellLayers(){
       wctx.fillStyle='#7a1f0c';wctx.fillRect(x-2,GROUND_Y-1,w+4,3);
       wctx.fillStyle='#c23a10';wctx.fillRect(x,GROUND_Y-1,w,2);
       wctx.fillStyle='#ff8c30';wctx.fillRect(x+2,GROUND_Y-1,w-4,1);}
+    /* lava veins cascading down the three big peaks (drawn per-frame) */
+    [[Math.round(VW*0.16),Math.max(4,GROUND_Y-130)],
+     [Math.round(VW*0.50),Math.max(2,GROUND_Y-158)],
+     [Math.round(VW*0.84),Math.max(4,GROUND_Y-118)]].forEach(([px,top])=>{
+      lavaVeins.push({x:px-4,top:top+18,len:GROUND_Y-top-26});
+      lavaVeins.push({x:px+5,top:top+30,len:GROUND_Y-top-40});});
+    /* drifting sky smoke replaces clouds in hell */
+    const nS=Math.max(3,Math.round(VW/140));
+    for(let i=0;i<nS;i++)hellSmoke.push(newSmoke());
     for(const p of PLATFORMS)if(!p.ground){p.spr=makePlatSpr(p);p.sprW=sprWhite(p.spr);}
     flagRef=PLATFORMS.find(p=>p.high)||null;}
+}
+
+/* ================= HELL SKY AMBIENCE =================
+   Smoke puffs drift like the overworld clouds; ash flakes fall
+   gently. newSmoke is defined here so buildHellLayers can use it. */
+function newSmoke(x){
+  return {x:x!==undefined?x:rand(-60,VW),
+    y:rand(8,Math.max(30,GROUND_Y-130)),
+    s:rand(1.2,2.4),v:rand(3,7),a:rand(0.16,0.34)};}
+function drawHellSmoke(){
+  if(!particlesOn)return;
+  for(const s of hellSmoke){
+    const x=Math.round(s.x),y=Math.round(s.y);
+    g.globalAlpha=s.a;
+    fillCircle(g,x-7*s.s,y+2,Math.round(4*s.s),'#221410');
+    fillCircle(g,x+7*s.s,y+2,Math.round(4*s.s),'#221410');
+    fillCircle(g,x,y,Math.round(6*s.s),'#2a1a16');
+    fillCircle(g,x+2*s.s,y-3*s.s,Math.round(4.5*s.s),'#33211b');
+    g.globalAlpha=1;
+  }
+}
+/* lava cascades on the background peaks: flickering stream + a
+   bright blob flowing downward */
+function drawHellBgFx(){
+  if(world!=='hell'||!particlesOn)return;
+  for(const v of lavaVeins){
+    for(let y=v.top;y<v.top+v.len;y+=3){
+      const ph=Math.floor(time*9+(y-v.top)*0.4)%3;
+      g.fillStyle=ph===0?'#ff8c30':ph===1?'#c23a10':'#7a1f0c';
+      g.fillRect(v.x,y,2,2);
+    }
+    const fy=v.top+((time*26)%v.len);
+    g.fillStyle='#ffd24a';
+    g.fillRect(v.x,Math.floor(fy),2,3);
+  }
 }
 
 /* DUAL-ORIENTATION LETTERBOX LAYOUT — no rotation hacks.
@@ -325,9 +377,9 @@ function applyDimension(){
 
 /* ================= HELL GATE =================
    Forms on the left of the overworld once lifetime earned hits
-   HELL_UNLOCK (dark red/orange fire vortex + embers). mode 'open'
-   means it works as an entrance in the overworld and as the way
-   back home in hell — one object, both directions. */
+   HELL_UNLOCK. Clean vortex — no outer glow, no side fangs.
+   Palette follows the DESTINATION: fire colors in the overworld
+   (leads to hell), cool teal/blue inside hell (leads home). */
 function updateHellGate(dt){
   hellGate.y=GROUND_Y;
   if(world==='over'&&hellGate.mode==='none'&&stats.earned>=HELL_UNLOCK){
@@ -339,57 +391,78 @@ function updateHellGate(dt){
     hellGate.t+=dt;
     if(particlesOn&&Math.random()<dt*22){
       const a=rand(0,6.283),r=rand(2,12)*(hellGate.t/HELL_GATE_FORM);
+      const home=world==='hell';
       parts.push({x:hellGate.x+Math.cos(a)*r,y:hellGate.y-14+Math.sin(a)*r*0.8,
         vx:rand(-8,8),vy:rand(-60,-20),gz:-20,t:0,life:rand(0.4,0.9),
-        col:rand()<0.5?'#ff7a2a':'#e04a1a',sz:1,star:rand()<0.15});}
+        col:(home?(rand()<0.5?'#8fe8f8':'#4fd6e8')
+                 :(rand()<0.5?'#ff7a2a':'#e04a1a')),sz:1,star:rand()<0.15});}
     if(hellGate.t>=HELL_GATE_FORM){
       hellGate.mode='open';
-      popText(hellGate.x,hellGate.y-40,'THE GATE OPENS...','#ff8c30',1);
+      popText(hellGate.x,hellGate.y-40,
+        world==='hell'?'THE WAY HOME...':'THE GATE OPENS...','#ff8c30',1);
     }
   }else if(hellGate.mode==='open'&&particlesOn&&Math.random()<dt*7){
-    /* ambient embers around the open gate */
+    /* ambient sparks around the open gate */
+    const home=world==='hell';
     parts.push({x:hellGate.x+rand(-9,9),y:hellGate.y-rand(4,24),
       vx:rand(-10,10),vy:rand(-46,-16),gz:-14,t:0,life:rand(0.5,1.1),
-      col:rand()<0.6?'#ff8c30':'#ffd24a',sz:1,star:rand()<0.12});
+      col:home?(rand()<0.6?'#8fe8f8':'#4fd6e8')
+              :(rand()<0.6?'#ff8c30':'#ffd24a'),sz:1,star:rand()<0.12});
   }
 }
 function drawHellGate(){
   if(hellGate.mode==='none')return;
   const gx=hellGate.x,gy=hellGate.y;
   const grow=hellGate.mode==='form'?clamp(hellGate.t/HELL_GATE_FORM,0,1):1;
-  /* rocky base */
-  g.fillStyle='#2a1210';g.fillRect(gx-12,gy-4,24,4);
-  g.fillStyle='#3a1a14';g.fillRect(gx-14,gy-5,4,2);g.fillRect(gx+10,gy-5,4,2);
+  /* rocky base — tinted toward the destination world */
+  const home=world==='hell';
+  g.fillStyle=home?'#1c2a1a':'#2a1210';g.fillRect(gx-12,gy-4,24,4);
+  g.fillStyle=home?'#26382a':'#3a1a14';
+  g.fillRect(gx-14,gy-5,4,2);g.fillRect(gx+10,gy-5,4,2);
   if(hellGate.mode==='form'&&grow<0.22)return;
   const wid=Math.max(2,Math.round(9*grow));
   const hgt=Math.max(3,Math.round(26*grow));
   const cy=gy-4-Math.round(hgt/2);
   const puls=animsOn?0.5+0.5*Math.sin(time*6):0.7;
-  /* heat glow */
-  g.globalAlpha=0.20+0.10*puls;
-  fillCircle(g,gx,cy,Math.round(wid*2.1),'#ff5a1a');
-  g.globalAlpha=1;
-  /* side rock fangs */
-  g.fillStyle='#3a1a14';
-  g.fillRect(gx-wid-5,cy-10,3,14);g.fillRect(gx+wid+2,cy-10,3,14);
-  /* fire vortex (squashed circle = oval gate) */
+  /* fire vortex (squashed circle = oval gate) — clean, no glow,
+     no side fangs */
   g.save();
   g.translate(gx,cy);g.scale(0.55,1);
-  fillCircle(g,0,0,wid+2,'#1a0a08');
-  fillCircle(g,0,0,wid,'#5c1408');
-  fillCircle(g,0,0,Math.round(wid*0.72),'#c23a10');
-  fillCircle(g,0,0,Math.round(wid*0.45),'#ff8c30');
-  for(let i=0;i<6;i++){
-    const a=time*(i%2?2.2:-1.7)+i*1.05;
-    const rr=wid*(0.25+(i%3)*0.22);
-    g.fillStyle=i%2?'#ffd24a':'#ff7a2a';
-    g.fillRect(Math.round(Math.cos(a)*rr)-1,Math.round(Math.sin(a)*rr*0.8)-1,2,2);}
+  if(home){
+    /* in hell: cool overworld palette (teal sky / blue water) */
+    fillCircle(g,0,0,wid+2,'#0a1424');
+    fillCircle(g,0,0,wid,'#143a5c');
+    fillCircle(g,0,0,Math.round(wid*0.72),'#2fa8a0');
+    fillCircle(g,0,0,Math.round(wid*0.45),'#8fe8f8');
+    for(let i=0;i<6;i++){
+      const a=time*(i%2?2.2:-1.7)+i*1.05;
+      const rr=wid*(0.25+(i%3)*0.22);
+      g.fillStyle=i%2?'#dffcff':'#4fd6e8';
+      g.fillRect(Math.round(Math.cos(a)*rr)-1,Math.round(Math.sin(a)*rr*0.8)-1,2,2);}
+  }else{
+    /* in the overworld: hellish fire palette */
+    fillCircle(g,0,0,wid+2,'#1a0a08');
+    fillCircle(g,0,0,wid,'#5c1408');
+    fillCircle(g,0,0,Math.round(wid*0.72),'#c23a10');
+    fillCircle(g,0,0,Math.round(wid*0.45),'#ff8c30');
+    for(let i=0;i<6;i++){
+      const a=time*(i%2?2.2:-1.7)+i*1.05;
+      const rr=wid*(0.25+(i%3)*0.22);
+      g.fillStyle=i%2?'#ffd24a':'#ff7a2a';
+      g.fillRect(Math.round(Math.cos(a)*rr)-1,Math.round(Math.sin(a)*rr*0.8)-1,2,2);}
+  }
   g.restore();
   g.globalAlpha=1;
 }
 
 /* ================= HELL AMBIENCE ================= */
 function updateHellAmbience(dt){
+  /* smoke puffs drift like clouds (animsOn only gates nothing here —
+     clouds drift regardless; the wobble is what animates) */
+  for(const s of hellSmoke){
+    s.x+=s.v*dt;
+    if(s.x-14*s.s>VW+12)Object.assign(s,newSmoke(-16*s.s-12));
+  }
   if(!particlesOn)return;
   /* drifting embers rising from the ground */
   if(Math.random()<dt*10)
@@ -402,6 +475,10 @@ function updateHellAmbience(dt){
       parts.push({x:L.x+rand(0,L.w),y:GROUND_Y-4,vx:rand(-8,8),vy:rand(-70,-30),
         gz:60,t:0,life:rand(0.3,0.6),col:rand()<0.5?'#ffd24a':'#ff8c30',
         sz:1,star:rand()<0.3});
+  /* ash flakes sifting down from the smoky sky */
+  if(Math.random()<dt*6)
+    parts.push({x:rand(0,VW),y:-4,vx:rand(-10,6),vy:rand(16,34),gz:2,
+      t:0,life:rand(3,6),col:rand()<0.5?'#6f6d78':'#55535e',sz:1});
 }
 
 /* ================= DAY / NIGHT CYCLE ================= */
@@ -602,24 +679,48 @@ function makePlatSpr(p){
     x.fillStyle='#c7c6cf';x.fillRect(px2-OX,p.y-2-OY,1,1);}
   return c;
 }
-/* hell platform: magma top imitating grass over dark rock */
+/* hell platform: magma top imitating grass over dark rock —
+   rich detail pass: cooling crust patches, cap glints, lit and
+   shadow edges, strata, cracks, magma drips, obsidian chunks */
 function makeHellPlatSpr(p){
   const w=p.w+4,c=mkCanvas(w,SPR_H)[0],x=c.getContext('2d');
   const OX=p.x-2,OY=p.y-PLAT_TOP;
   const R=(wx,wy,ww,wh,col)=>{x.fillStyle=col;x.fillRect(wx-OX,wy-OY,ww,wh);};
+  /* drop shadow */
   R(p.x+3,p.y+13,p.w-6,2,'rgba(15,4,3,0.35)');
+  /* rocky body: two strata + base */
+  R(p.x,p.y+6,p.w,5,'#4a2420');
+  R(p.x,p.y+9,p.w,1,'#3a1a16');
+  R(p.x+1,p.y+11,p.w-2,2,'#301612');
+  /* body cracks */
+  for(let i=0;i<3+((Math.random()*3)|0);i++)
+    R(p.x+2+((Math.random()*(p.w-4))|0),p.y+7+((Math.random()*5)|0),
+      1,1+((Math.random()*2)|0),'#24100c');
+  /* lit left edge / hot-shadow right edge */
+  R(p.x-2,p.y,1,6,'#ffd27a');
+  R(p.x+p.w+1,p.y,1,6,'#5c1408');
+  /* magma cap */
   R(p.x-2,p.y,p.w+4,2,'#ffb14e');
   R(p.x-2,p.y+2,p.w+4,3,'#e05a1e');
   R(p.x-2,p.y+5,p.w+4,1,'#7a1f0c');
-  R(p.x,p.y+6,p.w,5,'#4a2420');
-  R(p.x+1,p.y+11,p.w-2,1,'#301612');
-  /* rock cracks */
-  for(let i=0;i<3;i++)
-    R(p.x+3+((Math.random()*(p.w-6))|0),p.y+12,1,1+((Math.random()*2)|0),'#301612');
-  /* occasional hot glint on the magma cap */
-  if(Math.random()<0.6){
-    const gx2=p.x+2+((Math.random()*(p.w-4))|0);
-    R(gx2,p.y,2,1,'#ffe9a8');}
+  /* cooling crust patches on the cap */
+  for(let i=0;i<Math.max(2,Math.round(p.w/16));i++)
+    R(p.x+2+((Math.random()*(p.w-5))|0),p.y+2,2+((Math.random()*2)|0),1,'#c2431a');
+  /* hot glints */
+  if(Math.random()<0.85)
+    R(p.x+2+((Math.random()*(p.w-4))|0),p.y,2,1,'#ffe9a8');
+  if(Math.random()<0.5)
+    R(p.x+2+((Math.random()*(p.w-4))|0),p.y+3,1,1,'#ffcf7a');
+  /* magma drips hanging from the underside */
+  for(let i=0;i<2+((Math.random()*2)|0);i++){
+    const dx2=p.x+3+((Math.random()*(p.w-6))|0);
+    R(dx2,p.y+13,1,1+((Math.random()*2)|0),'#e05a1e');
+    if(Math.random()<0.4)R(dx2,p.y+13,1,1,'#ffd24a');}
+  /* obsidian chunks resting on the cap */
+  if(Math.random()<0.55){
+    const ox2=p.x+3+((Math.random()*(p.w-7))|0);
+    R(ox2,p.y-2,3,2,'#1c1016');
+    R(ox2,p.y-2,1,1,'#55535e');}
   return c;
 }
 function sprWhite(src){
