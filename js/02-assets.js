@@ -1,18 +1,19 @@
 /* ============================================================
    CoinFall Pixel — 02-assets
-   every pixel sprite, coin frames, shop icons, the 3x5 bitmap
-   font, buff icons, the power-up card face, the retro arcade
-   logotype renderer, the settings-panel icon buttons, the
-   tag/mini/micro fonts, and the MAGMA COIN.
+   sprites, coin frames, shop icons, fonts, buff icons, card
+   face, logotype, panel buttons, MAGMA COIN, hell shop icons.
 
-   v6.9: FIX — HELL_ICON_URL is now ASSIGNED to the UPG_HELL
-   entries (the missing line that caused blank shop icons).
-   Devil sprite REDESIGNED: red horns, glowing red eyes, red
-   skin, obsidian-black body with ember glints, dark legs.
+   v7.0: DEVIL redesigned to MATCH THE SHOP ICON — round red
+   head, red horns, glowing white-red eyes, obsidian stub body.
+   Hell icons rebuilt from the magma coin sprite:
+   OVERHEATED (coin + flames), MAGMA VALUE (coin + "+1"),
+   DISSIPATION (coin with holes / disintegrating), DEVIL (the
+   sprite's face), HELLFIRE (fireball orb), MAGMA SPAWN RATE
+   (coin with falling sparks).
    ============================================================ */
 'use strict';
 
-console.info('%cCFPX assets: v6.9 (icon fix + obsidian devil)','color:#4fa8dd;font-weight:bold');
+console.info('%cCFPX assets: v7.0 (devil mk2 + coin icons)','color:#4fa8dd;font-weight:bold');
 
 /* --- hero 12x17 --- */
 const HEAD=[
@@ -97,43 +98,43 @@ const FR_H={
   air:makeSprite([...HEAD_H,...TORSO_W,...LEGS_AIR]),
 };
 
-/* --- DEVIL 12x17 (obsidian makeover) ---
-   Red horns, glowing RED eyes on red skin, obsidian-black body
-   with ember glints, dark legs with soot boots. */
+/* --- DEVIL 12x17 (matches the shop icon) ---
+   Big round red head with red horns and glowing white-red
+   eyes, wide grinning mouth, small obsidian body, soot boots. */
 const HEAD_D=[
-"..R......R..",
+".RR......RR.",
 ".ORR....RRO.",
+"..ORRRRRRO..",
 ".ORRRRRRRRO.",
-"ORrrrrrrrrRO",
-"ORrRRrrRRrRO",
-"ORrrrrrrrrRO",
-".ORrRrrRrRO.",
-".ORRrrrrRRO."];
+"ORRWRRRRWRRO",
+"ORRRRRRRRRRO",
+".ORRrrrrRRO.",
+"..ORRRRRRO.."];
 const TORSO_D=[
-".ODDDDDDDDO.",
-".ODDYDDYDDO.",
-".ODDDYYDDDO.",
-".OrDDDDDDrO.",
-".ODDDDDDDDO."];
+"..ODDDDDDO..",
+"..ODYDDYDO..",
+"..ODDDDDDO..",
+"..OrDDDDrO..",
+"..ODDDDDDO.."];
 const LEGS_D_IDLE=[
-".ODDDDDDDDO.",
-".ODDDOODDDO.",
-".ODDDOODDDO.",
-".OBBBOOBBBO."];
+"..ODDDDDDO..",
+"..ODDOODDO..",
+"..ODDOODDO..",
+".OBBBOOBBO.."];
 const LEGS_D_W1=[
-".ODDDDDDDDO.",
-".ODDDDDDDDO.",
-"ODDD....DDDO",
-"OBBB....BBBO"];
+"..ODDDDDDO..",
+"..ODDDDDDO..",
+".ODD....DDO.",
+".OBB....BBO."];
 const LEGS_D_W2=[
-".ODDDDDDDDO.",
-".ODDDOODDDO.",
-".ODDDDDDDDO.",
-"..OBBBBBO.."];
+"..ODDDDDDO..",
+"..ODDOODDO..",
+"..ODDDDDDO..",
+"..OBBBBBBO.."];
 const LEGS_D_AIR=[
-".ODDDDDDDDO.",
-".ODDDOODDDO.",
-".ODDDOODDDO.",
+"..ODDDDDDO..",
+"..ODDOODDO..",
+"..ODDOODDO..",
 ".OBBO..OBBO."];
 const FR_D={
   idle:makeSprite([...HEAD_D,...TORSO_D,...LEGS_D_IDLE]),
@@ -202,7 +203,7 @@ function blitText(ctx,str,x,y,col,sc=1,align=0,shadow=true){
         if(gl[r][c]==='1')ctx.fillRect(ox+i*4*sc+c*sc,oy+r*sc,sc,sc);}}}
 const drawText=(...a)=>blitText(g,...a);
 
-/* ================= MINI 3x4 FONT (worker name labels) ================= */
+/* ================= MINI 3x4 FONT ================= */
 const MINI_GLYPHS={
 A:["010","101","111","101"],B:["110","101","110","101"],C:["011","100","100","011"],
 D:["110","101","101","110"],E:["111","100","110","111"],F:["111","100","110","100"],
@@ -232,7 +233,7 @@ function blitTextMini(ctx,str,x,y,col,align=0,shadow=true){
         if(gl[r][c]==='1')ctx.fillRect(ox+i*4+c,oy+r,1,1);}}
 }
 
-/* ================= MICRO 3x3 FONT (speed % only) ================= */
+/* ================= MICRO 3x3 FONT ================= */
 const MICRO_GLYPHS={
 "0":["111","101","111"],"1":["010","110","010"],"2":["111","001","111"],
 "3":["111","010","111"],"4":["101","111","001"],"5":["111","100","111"],
@@ -430,9 +431,10 @@ function magmaSprite(rows){const c=document.createElement('canvas');
   rows.forEach((row,ry)=>{for(let rx=0;rx<row.length;rx++){const ch=row[rx];
     if(ch!=='.'){x.fillStyle=MAGPAL[ch];x.fillRect(rx,ry,1,1);}}});
   return c;}
+const MAGMA_ROWS8=[
+"..OOOO..",".OWWYYO.","OWWYYYYO","OWYYYYyO","OYYYYyyO","OYyyyyyO",".OyyyyO.","..OOOO.."];
 const MAGMA_FRAMES={
-  8:magmaSprite([
-  "..OOOO..",".OWWYYO.","OWWYYYYO","OWYYYYyO","OYYYYyyO","OYyyyyyO",".OyyyyO.","..OOOO.."]),
+  8:magmaSprite(MAGMA_ROWS8),
   6:magmaSprite([
   "..OO..",".OWYO.","OWWYYy","OWYYYy","OYYyyy","OYyyyy",".OyyO.","..OO.."]),
   4:magmaSprite([
@@ -444,17 +446,70 @@ const magmaURL=MAGMA_FRAMES[8].toDataURL();
 const magmaFrame=cv=>MAGMA_FRAMES[2*clamp(Math.round(4.6*cv),1,4)];
 
 /* ================= HELL SHOP ICONS =================
-   0 overheated coin, 1 magma value (+), 2 dissipation, 3 devil,
-   4 hellfire fireball. ASSIGNED to UPG_HELL below — this was the
-   missing line that left the hell shop icons blank. */
-const HELL_ICON_DEFS=[
-["...RY...","..RYR...",".OWWYO..","OWWYYYYO","OWYYYYyO","OYYYYyyO",".OyyyyO.","..OOOO.."],
-["...WW...","..WOW...","...W....",".OWWYO..","OWYYYYYO","OYYYyyYO",".OyyyyO.","..OOOO.."],
-["..OOOO..",".OWW.YO.","OW.YYYYO","OWYYYY.O","OYY.YYyO",".OyyyyO.","..O.O...","........"],
-["O......O","OO....OO",".OOOOOO.",".ORRRRO.","ORWRRWRO","ORRRRRRO",".ORRRRO.","..OOOO.."],
-["...RR...","..RRYR..",".RRYYRR.","RRYWYRR.","RRYYYYRR",".RYYYYR.","..RYYR..","...RR..."]];
-const HELL_ICON_URL=HELL_ICON_DEFS.map(m=>makeSprite(m).toDataURL());
-/* THE FIX: bind the icons to the hell upgrade definitions */
+   Built FROM the magma coin sprite so they read as the same
+   currency. Index order matches UPG_HELL hIcon:
+   0 overheated, 1 mvalue, 2 dissipate, 3 devil, 4 hellfire,
+   5 mspawn. */
+const HELL_ICON_URL=(()=>{
+  const urls=[];
+  const mk=build=>{const c=document.createElement('canvas');
+    c.width=8;c.height=8;const x=c.getContext('2d');build(x);return c;};
+  const coinAt=(x,ox,oy)=>{x.drawImage(magmaSprite(MAGMA_ROWS8),ox,oy);};
+  /* 0: OVERHEATED COINS — coin with flames bursting off the top */
+  urls[0]=mk(x=>{
+    x.fillStyle='#ff8c30';x.fillRect(3,0,1,1);x.fillRect(5,0,1,1);
+    x.fillStyle='#ffd24a';x.fillRect(2,1,1,1);x.fillRect(4,1,2,1);
+    x.fillStyle='#c23a10';x.fillRect(6,1,1,1);
+    coinAt(x,0,2);
+  }).toDataURL();
+  /* 1: MAGMA COIN VALUE — coin with dark "+1" stamped in it */
+  urls[1]=mk(x=>{
+    coinAt(x,0,0);
+    x.fillStyle='#3a1208';
+    x.fillRect(2,3,1,3);x.fillRect(1,4,3,1);        /* + */
+    x.fillRect(5,2,1,4);x.fillRect(4,5,2,1);        /* 1 */
+  }).toDataURL();
+  /* 2: COIN DISSIPATION — coin with holes, bottom crumbling away */
+  urls[2]=mk(x=>{
+    coinAt(x,0,0);
+    x.clearRect(3,1,1,1);x.clearRect(5,3,1,1);
+    x.clearRect(1,4,1,1);x.clearRect(4,5,2,1);
+    x.clearRect(2,6,3,1);x.clearRect(6,6,1,1);
+    x.fillStyle='#c23a10';x.fillRect(2,7,1,1);      /* crumbs falling */
+    x.fillStyle='#ff8c30';x.fillRect(5,7,1,1);
+  }).toDataURL();
+  /* 3: DEVIL — the sprite's face: horns, round red head, eyes */
+  urls[3]=mk(x=>{
+    x.fillStyle='#e04a3a';
+    x.fillRect(1,0,1,1);x.fillRect(6,0,1,1);        /* horn tips */
+    x.fillRect(1,1,2,1);x.fillRect(5,1,2,1);
+    x.fillStyle='#3a1208';x.fillRect(2,1,4,1);
+    x.fillStyle='#e04a3a';x.fillRect(1,2,6,1);x.fillRect(0,3,8,1);
+    x.fillRect(0,4,8,1);x.fillRect(1,5,6,1);
+    x.fillStyle='#ffe9a8';x.fillRect(2,3,1,1);x.fillRect(5,3,1,1); /* eyes */
+    x.fillStyle='#3a1208';x.fillRect(3,5,2,1);      /* grin */
+    x.fillStyle='#1c1016';x.fillRect(2,6,4,1);      /* body */
+    x.fillRect(3,7,2,1);
+  }).toDataURL();
+  /* 4: HELLFIRE — fireball orb */
+  urls[4]=mk(x=>{
+    x.fillStyle='#c23a10';
+    x.fillRect(3,0,2,1);x.fillRect(2,1,4,1);x.fillRect(1,2,6,1);
+    x.fillRect(0,3,8,2);x.fillRect(1,5,6,1);x.fillRect(2,6,4,1);
+    x.fillRect(3,7,2,1);
+    x.fillStyle='#ff8c30';
+    x.fillRect(3,2,2,1);x.fillRect(2,3,4,2);x.fillRect(3,5,2,1);
+    x.fillStyle='#ffe9a8';x.fillRect(3,3,2,1);
+  }).toDataURL();
+  /* 5: MAGMA COIN SPAWN RATE — coin with sparks raining below */
+  urls[5]=mk(x=>{
+    coinAt(x,0,0);
+    x.fillStyle='#ffe9a8';x.fillRect(1,6,1,1);x.fillRect(6,6,1,1);
+    x.fillStyle='#ff8c30';x.fillRect(3,7,1,1);x.fillRect(5,7,1,1);
+  }).toDataURL();
+  return urls;
+})();
+/* bind to the hell upgrade definitions */
 UPG_HELL.forEach(u=>u.hIconURL=HELL_ICON_URL[u.hIcon]);
 
 /* ================= RETRO ARCADE LOGOTYPE ================= */

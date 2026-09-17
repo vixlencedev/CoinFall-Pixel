@@ -32,7 +32,7 @@ const SaveData = (() => {
     world: 'over',
     hell:  {
       coins:0, earned:0, workerOwned:false, cardUnlock:false, cardReadyAt:0,
-      levels: { overheat:0, mvalue:0, dissipate:0, hellfire:0 },
+      levels: { overheat:0, mvalue:0, mspawn:0, dissipate:0, hellfire:0 },
       buffs:  { magnet:0, dbljump:0, speed2x:0, helper:0, coins2x:0, portal:0 },
       order: []
     },

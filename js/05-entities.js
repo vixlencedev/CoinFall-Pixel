@@ -3,13 +3,12 @@
    player physics, Bob/Helper/Devil AI, coins + magnet, the coin
    portal, fireballs, and the particle / floating-text system.
 
-   v4: HELL SHOP — coin payout uses coinValBase() (+MAGMA COIN
-   VALUE in hell); overheated coins (x3, fire trail); coin
-   lifespan via restLife() (COIN DISSIPATION; 100 = never); the
-   DEVIL shoots homing fireballs at distant coins (HELLFIRE
-   improves speed/rate/accuracy).
-   v3: pickups credit the ACTIVE world's lifetime.
-   v2: POPUP TEXT pref gates the floating +N texts.
+   v4.1: FIREBALL REWORK — HELLFIRE 0 = one shot per ~6s with a
+   wide, loosely-guided arc that can even sail past; each level
+   adds rate (+), speed (+) and homing tightness (+). Fireballs
+   are LARGE with a constant flame trail (always visible). Hot
+   coin trail is much more prominent. Hell spawn rate follows
+   MAGMA COIN SPAWN RATE.
    ============================================================ */
 'use strict';
 
@@ -130,7 +129,7 @@ function collect(c){
   combo++;comboT=2.2;
   const mult=streakMult(combo);
   let v=Math.round(coinValBase()*mult*coinMult())*(c.hot?3:1);
-  if(!isFinite(v)||v<1)v=1;               /* NaN guard */
+  if(!isFinite(v)||v<1)v=1;
   coins+=v;
   if(world==='hell')HL.earned+=v; else stats.earned+=v;
   burst(c.x+4,c.y+4);
@@ -144,7 +143,7 @@ function collect(c){
 }
 function workerCollect(c,hot){
   let v=Math.round(coinValBase()*coinMult())*(hot?3:1);
-  if(!isFinite(v)||v<1)v=1;               /* NaN guard */
+  if(!isFinite(v)||v<1)v=1;
   coins+=v;
   if(world==='hell')HL.earned+=v; else stats.earned+=v;
   miniBurst(c.x+4,c.y+4);
@@ -155,7 +154,7 @@ function workerCollect(c,hot){
   tryPortalRoll();
 }
 function updateCoins(dt){
-  if(!isFinite(coins))coins=0;            /* self-heal a poisoned counter */
+  if(!isFinite(coins))coins=0;
   const cTS=shopOpen?0.35:1, gravM=fallMult();
   spawnT-=dt*cTS;
   if(spawnT<=0){
@@ -187,63 +186,69 @@ function updateCoins(dt){
       c.restT+=dt*cTS;
       if(c.restT>life){greyPuff(c.x+4,c.y+4);sfx.miss();coinList.splice(i,1);continue;}
     }
-    /* overheated coins: fire trail */
-    if(c.hot&&particlesOn&&Math.random()<dt*14)
-      parts.push({x:c.x+4+rand(-2,2),y:c.y+4+rand(-2,2),
-        vx:rand(-12,12),vy:rand(-42,-14),gz:-30,t:0,life:rand(0.25,0.5),
-        col:rand()<0.5?'#ff8c30':rand()<0.5?'#ffd24a':'#c23a10',sz:1,star:rand()<0.2});
+    /* overheated coins: LOUD fire trail — hard to miss */
+    if(c.hot&&particlesOn&&Math.random()<dt*34)
+      parts.push({x:c.x+4+rand(-3,3),y:c.y+3+rand(-3,3),
+        vx:rand(-14,14),vy:rand(-55,-18),gz:-40,t:0,life:rand(0.35,0.7),
+        col:rand()<0.4?'#ffe9a8':rand()<0.6?'#ff8c30':'#c23a10',
+        sz:rand()<0.4?2:1,star:rand()<0.25});
     if(Math.hypot(pcx-(c.x+4),pcy-(c.y+4))<pickupReach()){collect(c);coinList.splice(i,1);}
   }
 }
 
 /* ================= DEVIL FIREBALLS =================
-   The Devil (hell worker) launches homing fireballs at coins
-   beyond its pickup reach. HELLFIRE levels: faster projectiles,
-   quicker fire rate, tighter homing (the curve). */
+   HELLFIRE 0: one fireball every ~6s, slow, loosely guided —
+   it visibly arcs and can miss. Each level: -45ms per shot,
+   +1.2 speed, tighter homing. Level 100: 1.5s, fast, locked-on. */
 const fireballs=[];
 function updateDevilFire(dt){
   if(world!=='hell'||!workerOwned)return;
   worker.fireT=Math.max(0,(worker.fireT||0)-dt);
+  const hf=clamp(typeof lv.hellfire==='number'?lv.hellfire:0,0,100);
   if(worker.fireT<=0){
     let best=null,bd=0;
     for(const c of coinList){
       const d=Math.hypot((c.x+4)-(worker.x+5),(c.y+4)-(worker.y+7));
-      if(d>workerReach()+10&&d<170&&(!best||d>bd)){bd=d;best=c;}
+      if(d>workerReach()+10&&d<200&&(!best||d>bd)){bd=d;best=c;}
     }
     if(best){
-      worker.fireT=1.5-clamp(lv.hellfire,0,100)*0.009;
-      const spd=115+clamp(lv.hellfire,0,100)*1.3;
+      worker.fireT=6-hf*0.045;             /* 6.0s -> 1.5s */
+      const spd=85+hf*1.2;                 /* 85 -> 205 px/s */
+      const acc=0.15+hf*0.0085;            /* 0.15 -> 1.0 homing */
       const dx=(best.x+4)-(worker.x+5),dy=(best.y+4)-(worker.y+7);
       const d=Math.hypot(dx,dy)||1;
-      const acc=0.25+0.75*clamp(lv.hellfire,0,100)/100;
       fireballs.push({x:worker.x+5,y:worker.y+6,
         vx:dx/d*spd,vy:dy/d*spd,spd,acc,tgt:best,t:0});
-      if(particlesOn)for(let i=0;i<3;i++)
-        parts.push({x:worker.x+5,y:worker.y+6,vx:rand(-20,20),vy:rand(-30,10),
-          gz:0,t:0,life:0.25,col:'#ff8c30',sz:1});
-      sfx.tick();
-    }else worker.fireT=0.4;
+      if(particlesOn)for(let i=0;i<5;i++)
+        parts.push({x:worker.x+5,y:worker.y+6,vx:rand(-30,30),vy:rand(-40,10),
+          gz:0,t:0,life:0.3,col:rand()<0.5?'#ff8c30':'#c23a10',sz:rand()<0.4?2:1});
+      tone(300,90,0.25,'sawtooth',0.09);
+    }else worker.fireT=0.8;
   }
   for(let i=fireballs.length-1;i>=0;i--){const f=fireballs[i];
     f.t+=dt;
     const t=f.tgt;
     if(!t||!coinList.includes(t)){fireballs.splice(i,1);continue;}
     const dx=(t.x+4)-f.x,dy=(t.y+4)-f.y,d=Math.hypot(dx,dy)||1;
-    /* steering toward the target scaled by accuracy — low HELLFIRE
-       levels curve wide and can even miss past, high levels home tight */
-    const k=Math.min(1,f.acc*7*dt);
+    /* steering scaled by accuracy: low HELLFIRE curves wide and
+       can sail past the coin; high HELLFIRE homes tight */
+    const k=Math.min(1,f.acc*6*dt);
     f.vx+=(dx/d*f.spd-f.vx)*k;
     f.vy+=(dy/d*f.spd-f.vy)*k;
     f.x+=f.vx*dt;f.y+=f.vy*dt;
-    if(particlesOn&&Math.random()<dt*26)
-      parts.push({x:f.x,y:f.y,vx:rand(-8,8),vy:rand(-8,8),gz:0,t:0,
-        life:rand(0.2,0.4),col:rand()<0.5?'#ff8c30':'#c23a10',sz:1});
-    if(d<5){
+    /* constant trail — the fireball is NEVER just invisible math */
+    if(particlesOn&&Math.random()<dt*45)
+      parts.push({x:f.x+rand(-2,2),y:f.y+rand(-2,2),
+        vx:-f.vx*0.06+rand(-8,8),vy:-f.vy*0.06+rand(-8,8),gz:0,t:0,
+        life:rand(0.25,0.5),col:rand()<0.4?'#ffe9a8':rand()<0.7?'#ff8c30':'#c23a10',
+        sz:rand()<0.4?2:1});
+    if(d<6){
       workerCollect(t,t.hot);
       const idx=coinList.indexOf(t);
       if(idx>=0)coinList.splice(idx,1);
+      burst(f.x,f.y);
       fireballs.splice(i,1);
-    }else if(f.t>3.2)fireballs.splice(i,1);
+    }else if(f.t>6)fireballs.splice(i,1);
   }
 }
 

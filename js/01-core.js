@@ -1,23 +1,14 @@
 /* ============================================================
    CoinFall Pixel — 01-core
-   helpers, canvas, palette, sprite factory, upgrade definitions,
-   shared game state, menu-exclusivity registry, and save/load
-   glue.
-
-   v6: HELL SHOP TREE — UPG_HELL is hell's own upgrade list with
-   its own level keys (HL.lv): OVERHEATED COINS (spawn chance of
-   x3 flaming coins), MAGMA COIN VALUE (+1/level, max 500),
-   COIN DISSIPATION (longer coin lifespan, 100 = never), DEVIL
-   (worker: collects + fireballs at far coins) and HELLFIRE
-   (fireball speed/rate/accuracy). Stat helpers branch on world:
-   hell has FIXED base spawn/radius/gravity/luck (no overworld
-   upgrades carry or exist there). Cards never apply in hell.
-   v5: per-world state containers (OW/HL). v4: dimensions.
+   v6.1: hell tree gains MAGMA COIN SPAWN RATE (mspawn) — acts
+   exactly like the overworld spawn-rate curve. Fireball pacing
+   constants documented here: HELLFIRE 0 = one shot per ~6s,
+   100 = ~1.5s. Cards never apply in hell. Everything else as v6.
    ============================================================ */
 'use strict';
 
 /* build stamp: bump on every deploy; visible in the console */
-console.info('%cCFPX build: hell-shop-v1','color:#a05ae0;font-weight:bold');
+console.info('%cCFPX build: hell-shop-v2','color:#a05ae0;font-weight:bold');
 
 /* ================= HELPERS ================= */
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
@@ -123,6 +114,9 @@ const UPG_HELL=[
  {id:'mvalue', name:'MAGMA COIN VALUE', max:500, hIcon:1,
   cost:l=>Math.round(10+6*l+0.05*Math.pow(l,2.2)),
   txt:l=>`PAYOUT: ${group(1+l)} PER COIN`},
+ {id:'mspawn', name:'MAGMA COIN SPAWN RATE', max:100, hIcon:5,
+  cost:l=>Math.round(25*Math.pow(1.12,l)),
+  txt:l=>`DROP EVERY ${(1.6*Math.pow(2,-l/30)).toFixed(2)}S`},
  {id:'dissipate', name:'COIN DISSIPATION', max:100, hIcon:2,
   cost:l=>Math.round(35*Math.pow(1.12,l)),
   txt:l=>l>=100?'COINS NEVER DESPAWN'
@@ -130,12 +124,14 @@ const UPG_HELL=[
  {id:'devil', name:'DEVIL', hIcon:3},
  {id:'hellfire', name:'HELLFIRE', max:100, hIcon:4, needsDevil:true,
   cost:l=>Math.round(120*Math.pow(1.12,l)),
-  txt:l=>`FIREBALL PWR: ${Math.round((0.25+0.75*l/100)*100)}%`},
+  txt:l=>`SHOT EVERY ${(6-0.045*l).toFixed(1)}S - PWR ${Math.round((15+85*l/100))}%`},
 ];
 const upgMaxHell={}; UPG_HELL.forEach(u=>{if(u.max)upgMaxHell[u.id]=u.max;});
 
-/* ---- per-world stat helpers (branch on the active dimension) ---- */
-const spawnInterval=()=>world==='hell'?1.6:1.6*Math.pow(2,-lv.spawn/30);
+/* ---- per-world stat helpers ---- */
+const spawnInterval=()=>world==='hell'
+  ?1.6*Math.pow(2,-(typeof lv.mspawn==='number'?lv.mspawn:0)/30)
+  :1.6*Math.pow(2,-lv.spawn/30);
 const pickupReach =()=>world==='hell'?19:19+0.45*lv.radius;
 const fallMult    =()=>world==='hell'?1:1+0.04*lv.gravity;
 const luckChance  =()=>world==='hell'?0:0.005*lv.luck;
@@ -145,16 +141,17 @@ const coinValBase =()=>world==='hell'
   ?1+(typeof lv.mvalue==='number'&&isFinite(lv.mvalue)?lv.mvalue:0)
   :1+(typeof lv.value==='number'&&isFinite(lv.value)?lv.value:0);
 /* overheat chance (hell only) */
-const overheatChance=()=>world==='hell'?0.005*lv.overheat:0;
+const overheatChance=()=>world==='hell'
+  ?0.005*(typeof lv.overheat==='number'?lv.overheat:0):0;
 /* rest lifetime: hell shrinks dissipation; 100 = effectively never */
 const restLife=()=>world==='hell'
-  ?(lv.dissipate>=100?1e9:Math.max(2,12-0.1*lv.dissipate))
+  ?(lv.dissipate>=100?1e9:Math.max(2,12-0.1*(typeof lv.dissipate==='number'?lv.dissipate:0)))
   :12;
 const wEase=l=>1-Math.pow(1-clamp(l,0,100)/100,2);
 const workerSpeed   =()=>world==='hell'?70:50+115*wEase(lv.wspeed);
 const workerPct     =l=>Math.round((50+115*wEase(l))/1.65);
 /* devil fireball power % (label) */
-const devilPct=()=>Math.round((25+75*clamp(lv.hellfire,0,100)/100));
+const devilPct=()=>Math.round(15+85*clamp(typeof lv.hellfire==='number'?lv.hellfire:0,0,100)/100);
 const workerReach   =()=>world==='hell'?15:13+7*wEase(lv.wspeed);
 const workerCooldown=()=>world==='hell'?0.7:Math.max(0.35,1.3-0.95*wEase(lv.wspeed));
 const cardCdH=()=>Math.max(1,24-23*(clamp(lv.cardcd,0,100)/100));
@@ -167,14 +164,12 @@ const HELL_UNLOCK=1000000;
 const hellGate={mode:'none',t:0,x:96,y:0};
 const nearHellGate=()=>hellGate.mode==='open'&&Math.abs((player.x+5)-hellGate.x)<32;
 
-/* ---- per-world progression containers ----
-   The live vars below are the ACTIVE world's state. In hell the
-   live `lv` holds the HELL upgrade keys (UPG_HELL ids). */
+/* ---- per-world progression containers ---- */
 const OW={coins:0,workerOwned:false,cardUnlock:false,cardReadyAt:0,buffOrder:[],
   lv:{value:0,spawn:0,radius:0,gravity:0,luck:0,wspeed:0,cardcd:0},
   buffs:{magnet:0,dbljump:0,speed2x:0,helper:0,coins2x:0,portal:0},earned:0};
 const HL={coins:0,workerOwned:false,cardUnlock:false,cardReadyAt:0,buffOrder:[],
-  lv:{overheat:0,mvalue:0,dissipate:0,hellfire:0},
+  lv:{overheat:0,mvalue:0,mspawn:0,dissipate:0,hellfire:0},
   buffs:{magnet:0,dbljump:0,speed2x:0,helper:0,coins2x:0,portal:0},earned:0};
 
 function stashWorldState(){
@@ -191,7 +186,6 @@ function activateWorldState(){
   for(const k in lv)lv[k]=S.lv[k];
   for(const k in buffs)buffs[k]=S.buffs[k];
 }
-/* active world's lifetime earned (leaderboard + HUD "coins earned") */
 function curEarned(){return world==='hell'?HL.earned:stats.earned;}
 
 const streakMult=c=>c>=8?5:c>=4?2:1;
@@ -204,7 +198,7 @@ let coins=0;
 let workerOwned=false;
 let cardUnlock=false;
 let cardReadyAt=0;
-/* live lv/buffs: the ACTIVE world's state (keys depend on world) */
+/* live lv: the ACTIVE world's state (keys depend on world) */
 let lv={value:0,spawn:0,radius:0,gravity:0,luck:0,wspeed:0,cardcd:0};
 const buffs={magnet:0,dbljump:0,speed2x:0,helper:0,coins2x:0,portal:0};
 let buffOrder=[];
@@ -313,15 +307,14 @@ function load(){
   HL.coins=(typeof H.coins==='number')?H.coins:0;
   HL.earned=(typeof H.earned==='number')?H.earned:0;
   HL.workerOwned=!!(H&&H.workerOwned);
-  HL.cardUnlock=false;           /* cards never exist in hell */
+  HL.cardUnlock=false;
   HL.cardReadyAt=0;
-  HL.lv={overheat:0,mvalue:0,dissipate:0,hellfire:0};
+  HL.lv={overheat:0,mvalue:0,mspawn:0,dissipate:0,hellfire:0};
   const HLv=(H&&H.levels)||{};
   for(const k in HL.lv) if(typeof HLv[k]==='number')
     HL.lv[k]=clamp(HLv[k],0,upgMaxHell[k]||100);
   HL.buffs={magnet:0,dbljump:0,speed2x:0,helper:0,coins2x:0,portal:0};
   HL.buffOrder=[];
-  /* resume in the saved dimension */
   if(s&&s.world==='hell'){world='hell';activateWorldState();}
 }
 

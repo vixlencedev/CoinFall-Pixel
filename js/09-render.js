@@ -167,20 +167,24 @@ function drawLava(){
     }
   }
 }
-/* devil fireballs: big magma core, hot center, flame tail */
+/* devil fireballs: LARGE magma orb, hot core, flame tail —
+   impossible to miss at any HELLFIRE level */
 function drawFireballs(){
   if(world!=='hell')return;
   for(const f of fireballs){
     const x=Math.round(f.x),y=Math.round(f.y);
-    /* trailing flames opposite the travel direction */
-    const tx=Math.round(-f.vx*0.05),ty=Math.round(-f.vy*0.05);
+    /* tail opposite travel direction */
+    const tx=Math.round(clamp(-f.vx*0.06,-5,5)),
+          ty=Math.round(clamp(-f.vy*0.06,-5,5));
     g.fillStyle='#c23a10';
-    g.fillRect(x+tx,y+ty,2,2);
-    fillCircle(g,x,y,4,'#5c1408');
-    fillCircle(g,x,y,3,'#c23a10');
-    fillCircle(g,x,y,2,'#ff8c30');
-    g.fillStyle='#ffe9a8';g.fillRect(x-1,y-1,2,1);
-    g.fillStyle='#ffd24a';g.fillRect(x,y-2,1,1);
+    g.fillRect(x+tx,y+ty,3,3);
+    g.fillRect(x+Math.round(tx*0.5),y+Math.round(ty*0.5),2,2);
+    fillCircle(g,x,y,5,'#5c1408');
+    fillCircle(g,x,y,4,'#c23a10');
+    fillCircle(g,x,y,3,'#ff8c30');
+    fillCircle(g,x-1,y-1,1,'#ffe9a8');
+    g.fillStyle='#ffd24a';
+    g.fillRect(x,y-4,1,1);g.fillRect(x+3,y+1,1,1);
   }
 }
 function render(){
@@ -216,13 +220,16 @@ function render(){
     const spin=animsOn?c.spin+(c.state==='fall'?time*6:c.restT*2):0;
     const fr=(world==='hell'?magmaFrame:coinFrame)(Math.abs(Math.cos(spin)));
     g.drawImage(fr,Math.round(c.x+4-fr.width/2+sx),Math.round(c.y+sy));
-    /* overheated coins: flickering flame tuft */
+    /* overheated coins: bold flickering flames on top */
     if(c.hot){
-      const fl=animsOn?Math.round(Math.sin(time*14+c.x)*1):0;
+      const fl=animsOn?Math.round(Math.sin(time*16+c.x*0.7)*2):0;
+      const fx=Math.round(c.x+sx),fy=Math.round(c.y+sy);
+      g.fillStyle='#c23a10';
+      g.fillRect(fx+2,fy-4+fl,2,2);g.fillRect(fx+6,fy-3-fl,1,2);
       g.fillStyle='#ff8c30';
-      g.fillRect(Math.round(c.x+3+sx),Math.round(c.y-2+fl+sy),2,2);
+      g.fillRect(fx+3,fy-3+fl,2,3);g.fillRect(fx+5,fy-2,2,2);
       g.fillStyle='#ffd24a';
-      g.fillRect(Math.round(c.x+3+sx),Math.round(c.y-1+fl+sy),1,1);
+      g.fillRect(fx+4,fy-2+fl,1,2);
     }
   }
   if(workerOwned){
