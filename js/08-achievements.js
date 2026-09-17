@@ -198,7 +198,7 @@ const ACH=[
  /* ---- HELL DIMENSION SET ---- */
  {id:'hellgate', name:'HELL',                 icon:17, goal:1, desc:'ENTER THE HELL PORTAL',
   get:()=>achUnlocked.hellgate?1:0},
- {id:'devil',    name:'DEVIL',                icon:18, goal:1, desc:'DEVILS ADVOCATE',
+ {id:'devil',    name:'DEVIL',                icon:18, goal:1, desc:'MAKE A DEAL WITH THE DEVIL',
   get:()=>HL.workerOwned?1:0},
  {id:'hk10',     name:'WARMING UP',icon:19, goal:1e4, desc:'EARN 10,000 MAGMA COINS',
   get:()=>HL.earned},
